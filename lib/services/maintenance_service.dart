@@ -6,83 +6,69 @@ class MaintenanceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
 
-  // إضافة سجل صيانة جديد
-  Future<void> addMaintenanceLog(MaintenanceLogModel log) async {
+  Future<void> addMaintenanceLog(ServiceLogModel log) async {
     try {
-      await _firestore
-          .collection('maintenanceLogs')
-          .doc(log.logId)
-          .set(log.toMap());
-    } catch (e) {
-      rethrow;
-    }
+      await _firestore.collection('serviceLogs').doc(log.logId).set(log.toMap());
+    } catch (e) { rethrow; }
   }
 
-  // جلب سجلات صيانة سيارة معينة
-  Stream<List<MaintenanceLogModel>> getCarMaintenanceLogs(String carId) {
-  return _firestore
-      .collection('maintenanceLogs')
-      .where('carId', isEqualTo: carId)
-      .snapshots()
-      .map((snapshot) {
-        final logs = snapshot.docs
-            .map((doc) => MaintenanceLogModel.fromMap(doc.data()))
-            .toList();
-        logs.sort((a, b) => b.date.compareTo(a.date));
-        return logs;
-      });
-}
+  Future<void> addServiceLog(ServiceLogModel log) async {
+    try {
+      await _firestore.collection('serviceLogs').doc(log.logId).set(log.toMap());
+    } catch (e) { rethrow; }
+  }
 
-  // جلب التذكيرات القادمة
-  Stream<List<MaintenanceLogModel>> getUpcomingReminders(String carId) {
+  Stream<List<ServiceLogModel>> getCarMaintenanceLogs(String carId) {
     return _firestore
-        .collection('maintenanceLogs')
+        .collection('serviceLogs')
         .where('carId', isEqualTo: carId)
-        .where('status', isEqualTo: 'scheduled')
+        .snapshots()
+        .map((snapshot) {
+      final logs = snapshot.docs.map((doc) => ServiceLogModel.fromMap(doc.data())).toList();
+      logs.sort((a, b) => b.date.compareTo(a.date));
+      return logs;
+    });
+  }
+
+  Stream<List<ServiceLogModel>> getUpcomingReminders(String carId) {
+    return _firestore
+        .collection('serviceLogs')
+        .where('carId', isEqualTo: carId)
         .where('reminderSent', isEqualTo: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => MaintenanceLogModel.fromMap(doc.data()))
-            .toList());
+        .map((snapshot) {
+      final now = DateTime.now();
+      final logs = snapshot.docs
+          .map((doc) => ServiceLogModel.fromMap(doc.data()))
+          .where((log) {
+        if (log.expiryDate != null) {
+          final daysLeft = log.expiryDate!.difference(now).inDays;
+          return daysLeft <= 30 && daysLeft >= 0;
+        }
+        return false;
+      }).toList();
+      logs.sort((a, b) => a.expiryDate!.compareTo(b.expiryDate!));
+      return logs;
+    });
   }
 
-  // تحديث حالة التذكير
-  Future<void> markReminderSent(String logId) async {
+  Future<void> updateServiceLog(String logId, Map<String, dynamic> data) async {
     try {
-      await _firestore
-          .collection('maintenanceLogs')
-          .doc(logId)
-          .update({'reminderSent': true});
-    } catch (e) {
-      rethrow;
-    }
+      await _firestore.collection('serviceLogs').doc(logId).update(data);
+    } catch (e) { rethrow; }
   }
 
-  // تحديث سجل صيانة
-  Future<void> updateMaintenanceLog(
-      String logId, Map<String, dynamic> data) async {
-    try {
-      await _firestore
-          .collection('maintenanceLogs')
-          .doc(logId)
-          .update(data);
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // حذف سجل صيانة
   Future<void> deleteMaintenanceLog(String logId) async {
     try {
-      await _firestore
-          .collection('maintenanceLogs')
-          .doc(logId)
-          .delete();
-    } catch (e) {
-      rethrow;
-    }
+      await _firestore.collection('serviceLogs').doc(logId).delete();
+    } catch (e) { rethrow; }
   }
 
-  // توليد ID جديد
+  Future<void> markReminderSent(String logId) async {
+    try {
+      await _firestore.collection('serviceLogs').doc(logId).update({'reminderSent': true});
+    } catch (e) { rethrow; }
+  }
+
   String generateId() => _uuid.v4();
 }

@@ -1,34 +1,40 @@
-class MaintenanceLogModel {
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class ServiceLogModel {
   final String logId;
   final String carId;
   final String category;
   final String title;
   final DateTime date;
-  final double odometer;
   final double cost;
-  final String? garage;
-  final String status;
-  final double? nextDueOdometer;
-  final DateTime? nextDueDate;
-  final String? receiptUrl;
   final String? notes;
+  final String status;
   final bool reminderSent;
+  final double? odometer;
+  final String? garage;
+  final double? nextDueOdometer;
+  final DateTime? expiryDate;
+  final String? provider;
+  final String? violationNumber;
+  final String? violationLocation;
 
-  MaintenanceLogModel({
+  ServiceLogModel({
     required this.logId,
     required this.carId,
     required this.category,
     required this.title,
     required this.date,
-    required this.odometer,
     required this.cost,
-    this.garage,
-    required this.status,
-    this.nextDueOdometer,
-    this.nextDueDate,
-    this.receiptUrl,
     this.notes,
+    required this.status,
     required this.reminderSent,
+    this.odometer,
+    this.garage,
+    this.nextDueOdometer,
+    this.expiryDate,
+    this.provider,
+    this.violationNumber,
+    this.violationLocation,
   });
 
   Map<String, dynamic> toMap() {
@@ -38,36 +44,42 @@ class MaintenanceLogModel {
       'category': category,
       'title': title,
       'date': date,
-      'odometer': odometer,
       'cost': cost,
-      'garage': garage,
-      'status': status,
-      'nextDueOdometer': nextDueOdometer,
-      'nextDueDate': nextDueDate,
-      'receiptUrl': receiptUrl,
       'notes': notes,
+      'status': status,
       'reminderSent': reminderSent,
+      'odometer': odometer,
+      'garage': garage,
+      'nextDueOdometer': nextDueOdometer,
+      'expiryDate': expiryDate,
+      'provider': provider,
+      'violationNumber': violationNumber,
+      'violationLocation': violationLocation,
     };
   }
 
-  factory MaintenanceLogModel.fromMap(Map<String, dynamic> map) {
-    return MaintenanceLogModel(
+  factory ServiceLogModel.fromMap(Map<String, dynamic> map) {
+    return ServiceLogModel(
       logId: map['logId'] ?? '',
       carId: map['carId'] ?? '',
-      category: map['category'] ?? 'other',
+      category: map['category'] ?? 'maintenance',
       title: map['title'] ?? '',
-      date: (map['date'] as dynamic).toDate(),
-      odometer: (map['odometer'] ?? 0).toDouble(),
+      date: (map['date'] as Timestamp).toDate(),
       cost: (map['cost'] ?? 0).toDouble(),
-      garage: map['garage'],
-      status: map['status'] ?? 'done',
-      nextDueOdometer: map['nextDueOdometer']?.toDouble(),
-      nextDueDate: map['nextDueDate'] != null
-          ? (map['nextDueDate'] as dynamic).toDate()
-          : null,
-      receiptUrl: map['receiptUrl'],
       notes: map['notes'],
+      status: map['status'] ?? 'done',
       reminderSent: map['reminderSent'] ?? false,
+      odometer: map['odometer']?.toDouble(),
+      garage: map['garage'],
+      nextDueOdometer: map['nextDueOdometer']?.toDouble(),
+      expiryDate: map['expiryDate'] != null
+          ? (map['expiryDate'] as Timestamp).toDate()
+          : null,
+      provider: map['provider'],
+      violationNumber: map['violationNumber'],
+      violationLocation: map['violationLocation'],
     );
   }
 }
+
+typedef MaintenanceLogModel = ServiceLogModel;

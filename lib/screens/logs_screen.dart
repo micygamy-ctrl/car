@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/fuel_service.dart';
-import '../services/maintenance_service.dart';
+import '../services/service_log_service.dart';
 import '../models/fuel_log_model.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
+import '../services/maintenance_service.dart';
+
 
 class LogsScreen extends StatefulWidget {
   final CarModel car;
@@ -20,7 +22,7 @@ class _LogsScreenState extends State<LogsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FuelService _fuelService = FuelService();
-  final MaintenanceService _maintenanceService = MaintenanceService();
+  final MaintenanceService _MaintenanceService = MaintenanceService();
 
   @override
   void initState() {
@@ -208,8 +210,8 @@ class _LogsScreenState extends State<LogsScreen>
   }
 
   Widget _buildMaintenanceLogs() {
-    return StreamBuilder<List<MaintenanceLogModel>>(
-      stream: _maintenanceService.getCarMaintenanceLogs(widget.car.carId),
+    return StreamBuilder<List<ServiceLogModel>>(
+      stream: _MaintenanceService.getCarMaintenanceLogs(widget.car.carId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -232,7 +234,7 @@ class _LogsScreenState extends State<LogsScreen>
     );
   }
 
-  Widget _buildMaintenanceCard(MaintenanceLogModel log) {
+  Widget _buildMaintenanceCard(ServiceLogModel log) {
     final categoryData = {
       'oil_change': {'label': 'تغيير زيت', 'icon': Icons.oil_barrel, 'color': Colors.orange},
       'tire': {'label': 'إطارات', 'icon': Icons.tire_repair, 'color': Colors.blue},

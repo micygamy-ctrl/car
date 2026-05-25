@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/maintenance_service.dart';
+import '../services/service_log_service.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
+import '../services/maintenance_service.dart';
+
+
 
 class AddMaintenanceScreen extends StatefulWidget {
   final CarModel car;
@@ -15,7 +18,7 @@ class AddMaintenanceScreen extends StatefulWidget {
 
 class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
   final _formKey = GlobalKey<FormState>();
-  final MaintenanceService _maintenanceService = MaintenanceService();
+  final MaintenanceService _MaintenanceService = MaintenanceService();
 
   final _titleController = TextEditingController();
   final _odometerController = TextEditingController();
@@ -52,8 +55,8 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final log = MaintenanceLogModel(
-        logId: _maintenanceService.generateId(),
+      final log = ServiceLogModel(
+        logId: _MaintenanceService.generateId(),
         carId: widget.car.carId,
         category: _selectedCategory,
         title: _titleController.text.trim(),
@@ -69,7 +72,7 @@ class _AddMaintenanceScreenState extends State<AddMaintenanceScreen> {
         reminderSent: false,
       );
 
-      await _maintenanceService.addMaintenanceLog(log);
+      await _MaintenanceService.addMaintenanceLog(log);
 
       if (mounted) {
         Navigator.pop(context);

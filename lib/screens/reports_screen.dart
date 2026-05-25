@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/fuel_service.dart';
-import '../services/maintenance_service.dart';
 import '../models/fuel_log_model.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
+import '../services/maintenance_service.dart';
 
 class ReportsScreen extends StatelessWidget {
   final CarModel car;
@@ -15,8 +15,7 @@ class ReportsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final FuelService fuelService = FuelService();
-    final MaintenanceService maintenanceService = MaintenanceService();
-
+     final MaintenanceService maintenanceService = MaintenanceService();
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       body: CustomScrollView(
@@ -173,7 +172,7 @@ class ReportsScreen extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: 24),
-                  StreamBuilder<List<MaintenanceLogModel>>(
+                  StreamBuilder<List<ServiceLogModel>>(
                     stream: maintenanceService.getCarMaintenanceLogs(car.carId),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -433,7 +432,7 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMaintenanceMiniCard(MaintenanceLogModel log) {
+  Widget _buildMaintenanceMiniCard(ServiceLogModel log) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),

@@ -8,6 +8,8 @@ import 'reports_screen.dart';
 import 'logs_screen.dart';
 import '../services/notification_service.dart';
 import 'edit_car_screen.dart';
+import 'add_service_screen.dart';
+
 
 
 
@@ -309,18 +311,17 @@ GestureDetector(
                         ),
                       ),
                       _buildActionCard(
-                        context,
-                        icon: Icons.build,
-                        label: 'تسجيل صيانة',
-                        color: const Color(0xFF43A047),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                AddMaintenanceScreen(car: car),
-                          ),
-                        ),
-                      ),
+  context,
+  icon: Icons.miscellaneous_services,
+  label: 'تسجيل خدمة',
+  color: const Color(0xFF43A047),
+  onTap: () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => AddServiceScreen(car: car),
+    ),
+  ),
+),
                       _buildActionCard(
                         context,
                         icon: Icons.bar_chart,
