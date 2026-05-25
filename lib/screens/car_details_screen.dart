@@ -9,8 +9,7 @@ import 'logs_screen.dart';
 import '../services/notification_service.dart';
 import 'edit_car_screen.dart';
 import 'add_service_screen.dart';
-
-
+import 'map_screen.dart';
 
 
 class CarDetailsScreen extends StatelessWidget {
@@ -26,7 +25,6 @@ class CarDetailsScreen extends StatelessWidget {
 double kmToNextOil = car.oilChangeInterval - kmDriven;
 bool oilSoon = kmToNextOil <= 500;
 
-// تحقق من تذكير الزيت تلقائياً
 WidgetsBinding.instance.addPostFrameCallback((_) {
   NotificationService().checkOilChangeReminder(
     carName: '${car.make} ${car.model}',
@@ -145,9 +143,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                               child: Row(
                                 children: [
                                   Icon(
-                                    oilSoon
-                                        ? Icons.warning
-                                        : Icons.check_circle,
+                                    oilSoon ? Icons.warning : Icons.check_circle,
                                     color: Colors.white,
                                     size: 14,
                                   ),
@@ -210,11 +206,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                           Icons.speed,
                           const Color(0xFF1E88E5),
                         ),
-                        Container(
-                          width: 1,
-                          height: 50,
-                          color: Colors.grey.withOpacity(0.2),
-                        ),
+                        Container(width: 1, height: 50, color: Colors.grey.withOpacity(0.2)),
                         _buildStatItem(
                           'سعة الخزان',
                           '${car.tankCapacity.toStringAsFixed(0)}',
@@ -222,11 +214,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                           Icons.local_gas_station,
                           const Color(0xFFFB8C00),
                         ),
-                        Container(
-                          width: 1,
-                          height: 50,
-                          color: Colors.grey.withOpacity(0.2),
-                        ),
+                        Container(width: 1, height: 50, color: Colors.grey.withOpacity(0.2)),
                         _buildStatItem(
                           'فترة الزيت',
                           '${car.oilChangeInterval.toStringAsFixed(0)}',
@@ -237,50 +225,52 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+
                   // زرار التعديل
-GestureDetector(
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditCarScreen(car: car),
-      ),
-    );
-  },
-  child: Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: const Color(0xFF1E88E5).withOpacity(0.2),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.edit, color: Color(0xFF1E88E5)),
-        const SizedBox(width: 8),
-        Text(
-          'تعديل بيانات السيارة',
-          style: GoogleFonts.cairo(
-            color: const Color(0xFF1E88E5),
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ],
-    ),
-  ),
-),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditCarScreen(car: car),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF1E88E5).withOpacity(0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.edit, color: Color(0xFF1E88E5)),
+                          const SizedBox(width: 8),
+                          Text(
+                            'تعديل بيانات السيارة',
+                            style: GoogleFonts.cairo(
+                              color: const Color(0xFF1E88E5),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 20),
 
-                  // الأزرار
+                  // الإجراءات السريعة
                   Text(
                     'الإجراءات السريعة',
                     style: GoogleFonts.cairo(
@@ -311,17 +301,17 @@ GestureDetector(
                         ),
                       ),
                       _buildActionCard(
-  context,
-  icon: Icons.miscellaneous_services,
-  label: 'تسجيل خدمة',
-  color: const Color(0xFF43A047),
-  onTap: () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => AddServiceScreen(car: car),
-    ),
-  ),
-),
+                        context,
+                        icon: Icons.miscellaneous_services,
+                        label: 'تسجيل خدمة',
+                        color: const Color(0xFF43A047),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddServiceScreen(car: car),
+                          ),
+                        ),
+                      ),
                       _buildActionCard(
                         context,
                         icon: Icons.bar_chart,
@@ -343,6 +333,19 @@ GestureDetector(
                           context,
                           MaterialPageRoute(
                             builder: (context) => LogsScreen(car: car),
+                          ),
+                        ),
+                      ),
+                      // ✅ كارت الخريطة الجديد
+                      _buildActionCard(
+                        context,
+                        icon: Icons.map,
+                        label: 'خريطة قريبة',
+                        color: const Color(0xFF00897B),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MapScreen(),
                           ),
                         ),
                       ),
@@ -376,20 +379,14 @@ GestureDetector(
               ),
               TextSpan(
                 text: ' $unit',
-                style: GoogleFonts.cairo(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
+                style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
         ),
         Text(
           label,
-          style: GoogleFonts.cairo(
-            fontSize: 11,
-            color: Colors.grey,
-          ),
+          style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
         ),
       ],
     );
@@ -442,8 +439,9 @@ GestureDetector(
       ),
     );
   }
+
   String _capitalize(String text) {
-  if (text.isEmpty) return text;
-  return text[0].toUpperCase() + text.substring(1);
-}
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
 }
