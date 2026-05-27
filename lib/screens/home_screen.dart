@@ -4,17 +4,41 @@ import '../services/auth_service.dart';
 import '../services/car_service.dart';
 import '../models/car_model.dart';
 import 'add_car_screen.dart';
+import 'odometer_update_screen.dart';
+import '../services/background_tracking_service.dart';
 import 'car_details_screen.dart';
 import 'settings_screen.dart';
 
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final AuthService authService = AuthService();
+  final CarService carService = CarService();
+  final BackgroundTrackingService _bgService = BackgroundTrackingService();
+
+  @override
+  void initState() {
+    super.initState();
+    _bgService.init();
+    _bgService.activeTrackings.addListener(() => setState(() {}));
+    _bgService.backgroundEnabled.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _bgService.activeTrackings.removeListener(() {});
+    _bgService.backgroundEnabled.removeListener(() {});
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
-    final CarService carService = CarService();
     final user = authService.currentUser;
 
     return Scaffold(
@@ -160,7 +184,7 @@ class HomeScreen extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final car = cars[index];
-                      return _CarCard(car: car);
+                      return _CarCard(car: car, bgService: _bgService);
                     },
                     childCount: cars.length,
                   ),
@@ -192,8 +216,9 @@ class HomeScreen extends StatelessWidget {
 
 class _CarCard extends StatelessWidget {
   final CarModel car;
+  final BackgroundTrackingService bgService;
 
-  const _CarCard({required this.car});
+  const _CarCard({required this.car, required this.bgService});
 
   @override
   Widget build(BuildContext context) {
@@ -344,6 +369,82 @@ bool oilSoon = kmToNextOil <= 500;
                     ],
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ValueListenableBuilder<Set<String>>(
+                  valueListenable: bgService.activeTrackings,
+                  builder: (context, active, _) {
+                    final isTracking = active.contains(car.carId);
+                    return ElevatedButton.icon(
+                      onPressed: () async {
+                        if (!isTracking) {
+                          try {
+                            await bgService.startTracking(car);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('بدأ تتبع السيارة بالخلفية', style: GoogleFonts.cairo()),
+                                backgroundColor: const Color(0xFF43A047),
+                              ));
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('تعذر بدء التتبع: $e', style: GoogleFonts.cairo()),
+                                backgroundColor: Colors.red,
+                              ));
+                            }
+                          }
+                        } else {
+                          final res = await bgService.stopTracking(car.carId);
+                          if (context.mounted) {
+                            if (res != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('تم حساب ${res.distanceKm.toStringAsFixed(1)} كم', style: GoogleFonts.cairo()),
+                                backgroundColor: const Color(0xFF43A047),
+                                action: SnackBarAction(
+                                  label: 'فتح',
+                                  textColor: Colors.white,
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (ctx) => OdometerUpdateScreen(car: car, initialOdometer: res.suggestedOdometer),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('تم إيقاف التتبع', style: GoogleFonts.cairo()),
+                                backgroundColor: const Color(0xFF43A047),
+                              ));
+                            }
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1E88E5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      icon: Icon(isTracking ? Icons.stop : Icons.location_searching),
+                      label: Text(
+                        isTracking ? 'إيقاف التتبع' : 'تشغيل تتبع العداد',
+                        style: GoogleFonts.cairo(
+                          color: const Color(0xFF1E88E5),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ),

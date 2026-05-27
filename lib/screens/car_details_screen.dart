@@ -3,13 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/car_model.dart';
 import '../services/car_service.dart';
 import 'add_fuel_screen.dart';
-import 'add_maintenance_screen.dart';
 import 'reports_screen.dart';
 import 'logs_screen.dart';
 import '../services/notification_service.dart';
 import 'edit_car_screen.dart';
 import 'add_service_screen.dart';
-import 'map_screen.dart';
+import 'odometer_update_screen.dart';
+import '../services/map_screen.dart';
 
 
 class CarDetailsScreen extends StatelessWidget {
@@ -346,6 +346,18 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const MapScreen(),
+                          ),
+                        ),
+                      ),
+                      _buildActionCard(
+                        context,
+                        icon: Icons.location_searching,
+                        label: 'تتبع العداد بالخلفية',
+                        color: const Color(0xFF1E88E5),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => OdometerUpdateScreen(car: car),
                           ),
                         ),
                       ),
