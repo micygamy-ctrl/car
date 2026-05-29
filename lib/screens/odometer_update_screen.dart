@@ -15,7 +15,8 @@ enum OdometerSource { manual, gps, camera }
 class OdometerUpdateScreen extends StatefulWidget {
   final CarModel car;
   final double? initialOdometer;
-  const OdometerUpdateScreen({super.key, required this.car, this.initialOdometer});
+  const OdometerUpdateScreen(
+      {super.key, required this.car, this.initialOdometer});
 
   @override
   State<OdometerUpdateScreen> createState() => _OdometerUpdateScreenState();
@@ -34,18 +35,48 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
   bool _backgroundEnabled = false;
   bool _movementReminderSent = false;
   int _stationaryCount = 0;
+  double _baseOdometer = 0;
+  double _pendingMovementMeters = 0;
+  double _trackedDistanceMeters = 0;
   double _trackedDistance = 0;
   String? _trackingStatus;
   StreamSubscription<Position>? _positionStreamSubscription;
+  static const double _minMovementMeters = 10;
+  static const double _autoStartMovementMeters = 100;
+  static const double _maxAutoStartSegmentMeters = 200;
+  static const double _maxAcceptedAccuracyMeters = 50;
+  static const double _maxReasonableSegmentMeters = 1000;
+  static const double _stationarySpeedMetersPerSecond = 1.5;
 
   @override
   void initState() {
     super.initState();
     _odometerController.text =
-        (widget.initialOdometer ?? widget.car.currentOdometer).toStringAsFixed(1);
+        (widget.initialOdometer ?? widget.car.currentOdometer)
+            .toStringAsFixed(1);
+    _baseOdometer = widget.car.currentOdometer;
+    if (widget.initialOdometer != null &&
+        widget.initialOdometer! > widget.car.currentOdometer) {
+      _trackedDistance = widget.initialOdometer! - widget.car.currentOdometer;
+      _trackedDistanceMeters = _trackedDistance * 1000;
+      _source = OdometerSource.gps;
+    }
     _initBackground();
     _startAutoGpsTracking();
   }
+
+  LocationSettings get _gpsLocationSettings => AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 2),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'تتبع العداد بالخلفية',
+          notificationText: 'يتم متابعة حركة السيارة لحساب العداد بدقة.',
+          notificationChannelName: 'تتبع العداد',
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
 
   @override
   void dispose() {
@@ -71,14 +102,16 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     final androidConfig = fb.FlutterBackgroundAndroidConfig(
       notificationTitle: 'تتبع السيارة بالخلفية',
       notificationText: 'التطبيق يراقب حركة السيارة في الخلفية',
-      notificationIcon: fb.AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+      notificationIcon:
+          fb.AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
     );
 
     final initialized = await fb.FlutterBackground.initialize(
       androidConfig: androidConfig,
     );
     if (initialized) {
-      _backgroundEnabled = await fb.FlutterBackground.enableBackgroundExecution();
+      _backgroundEnabled =
+          await fb.FlutterBackground.enableBackgroundExecution();
     }
   }
 
@@ -91,10 +124,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     }
 
     _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      ),
+      locationSettings: _gpsLocationSettings,
     ).listen((position) {
       if (_isTracking) {
         _handleTrackingPosition(position);
@@ -106,6 +136,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
         return;
       }
 
+      if (position.accuracy > _maxAcceptedAccuracyMeters) return;
+
       final previousPosition = _lastPosition!;
       final distance = Geolocator.distanceBetween(
         previousPosition.latitude,
@@ -114,21 +146,47 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
         position.longitude,
       );
 
+      if (distance > _maxAutoStartSegmentMeters) {
+        _lastPosition = position;
+        _pendingMovementMeters = 0;
+        return;
+      }
+
       _lastPosition = position;
 
-      if (distance >= 20 && !_movementReminderSent) {
+      final hasSpeed = position.speed >= 0;
+      final isMoving =
+          (!hasSpeed || position.speed >= _stationarySpeedMetersPerSecond) &&
+              distance >= _minMovementMeters;
+
+      if (isMoving) {
+        _pendingMovementMeters += distance;
+      } else {
+        _pendingMovementMeters = 0;
+      }
+
+      if (_pendingMovementMeters >= _autoStartMovementMeters &&
+          !_movementReminderSent) {
+        if (!mounted) return;
+        setState(() {
+          _startPosition = previousPosition;
+          _baseOdometer = double.tryParse(_odometerController.text) ??
+              widget.car.currentOdometer;
+          _trackedDistanceMeters = _pendingMovementMeters;
+          _trackedDistance = _trackedDistanceMeters / 1000;
+          _isTracking = true;
+          _source = OdometerSource.gps;
+          _trackingStatus =
+              'بدأ التتبع تلقائياً بعد حركة 100 متر. استمر في القيادة ثم أوقف التتبع.';
+        });
         NotificationService().showNotification(
           id: 2,
-          title: 'هل تريد تتبع السيارة؟',
-          body: 'تم اكتشاف حركة السيارة. افتح التطبيق لتفعيل التتبع.',
+          title: 'بدأ تتبع العداد تلقائياً',
+          body:
+              'تم اكتشاف حركة السيارة لمسافة 100 متر، وبدأ حساب المسافة بالـ GPS.',
         );
         _movementReminderSent = true;
-        if (mounted) {
-          setState(() {
-            _trackingStatus =
-                'تم اكتشاف حركة السيارة، افتح التطبيق لبدء التتبع.';
-          });
-        }
+        _pendingMovementMeters = 0;
       }
     }, onError: (_) {
       // Ignore location stream errors here.
@@ -147,6 +205,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       return;
     }
 
+    if (position.accuracy > _maxAcceptedAccuracyMeters) return;
+
     final movedDistance = Geolocator.distanceBetween(
       _lastPosition!.latitude,
       _lastPosition!.longitude,
@@ -154,11 +214,20 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       position.longitude,
     );
 
-    final isStationary = position.speed < 1.5 || movedDistance < 10;
+    if (movedDistance > _maxReasonableSegmentMeters) {
+      _lastPosition = position;
+      return;
+    }
+
+    final hasSpeed = position.speed >= 0;
+    final isStationary =
+        (hasSpeed && position.speed < _stationarySpeedMetersPerSecond) ||
+            movedDistance < _minMovementMeters;
     if (isStationary) {
       _stationaryCount += 1;
     } else {
       _stationaryCount = 0;
+      _trackedDistanceMeters += movedDistance;
       _lastPosition = position;
     }
 
@@ -167,13 +236,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       return;
     }
 
-    final totalDistanceKm = Geolocator.distanceBetween(
-          _startPosition!.latitude,
-          _startPosition!.longitude,
-          position.latitude,
-          position.longitude,
-        ) /
-        1000;
+    final totalDistanceKm = _trackedDistanceMeters / 1000;
 
     setState(() {
       _trackedDistance = totalDistanceKm;
@@ -182,20 +245,37 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     });
   }
 
+  void _handleFinalPosition(Position position) {
+    if (_lastPosition == null ||
+        position.accuracy > _maxAcceptedAccuracyMeters) {
+      return;
+    }
+
+    final movedDistance = Geolocator.distanceBetween(
+      _lastPosition!.latitude,
+      _lastPosition!.longitude,
+      position.latitude,
+      position.longitude,
+    );
+
+    final hasSpeed = position.speed >= 0;
+    final isStationary =
+        (hasSpeed && position.speed < _stationarySpeedMetersPerSecond) ||
+            movedDistance < _minMovementMeters;
+
+    if (!isStationary && movedDistance <= _maxReasonableSegmentMeters) {
+      _trackedDistanceMeters += movedDistance;
+      _lastPosition = position;
+    }
+  }
+
   Future<void> _stopAutoTracking(Position currentPosition) async {
     if (_startPosition == null) return;
 
-    final distanceMeters = Geolocator.distanceBetween(
-      _startPosition!.latitude,
-      _startPosition!.longitude,
-      currentPosition.latitude,
-      currentPosition.longitude,
-    );
-    final distanceKm = distanceMeters / 1000;
-    final currentOdometer =
-        double.tryParse(_odometerController.text) ??
-            widget.car.currentOdometer;
-    final suggested = currentOdometer + distanceKm;
+    _handleFinalPosition(currentPosition);
+
+    final distanceKm = _trackedDistanceMeters / 1000;
+    final suggested = _baseOdometer + distanceKm;
 
     _stationaryCount = 0;
 
@@ -206,6 +286,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       _source = OdometerSource.gps;
       _trackingStatus = null;
       _movementReminderSent = false;
+      _pendingMovementMeters = 0;
     });
 
     if (mounted) {
@@ -223,8 +304,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     if (!hasPermission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('يرجى منح إذن الموقع', style: GoogleFonts.cairo()),
+          content: Text('يرجى منح إذن الموقع', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ));
       }
@@ -235,7 +315,12 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         _startPosition = position;
+        _lastPosition = position;
+        _baseOdometer = double.tryParse(_odometerController.text) ??
+            widget.car.currentOdometer;
         _isTracking = true;
+        _pendingMovementMeters = 0;
+        _trackedDistanceMeters = 0;
         _trackedDistance = 0;
         _movementReminderSent = false;
         _trackingStatus = 'جاري التتبع... قُد سيارتك ثم أوقف التتبع';
@@ -243,8 +328,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('خطأ في تحديد الموقع: $e',
-              style: GoogleFonts.cairo()),
+          content: Text('خطأ في تحديد الموقع: $e', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ));
       }
@@ -257,17 +341,10 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       final endPosition = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
 
-      final distanceMeters = Geolocator.distanceBetween(
-        _startPosition!.latitude,
-        _startPosition!.longitude,
-        endPosition.latitude,
-        endPosition.longitude,
-      );
-      final distanceKm = distanceMeters / 1000;
-      final currentOdometer =
-          double.tryParse(_odometerController.text) ??
-              widget.car.currentOdometer;
-      final suggested = currentOdometer + distanceKm;
+      _handleFinalPosition(endPosition);
+
+      final distanceKm = _trackedDistanceMeters / 1000;
+      final suggested = _baseOdometer + distanceKm;
 
       setState(() {
         _isTracking = false;
@@ -276,6 +353,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
         _source = OdometerSource.gps;
         _trackingStatus = null;
         _movementReminderSent = false;
+        _pendingMovementMeters = 0;
       });
 
       if (mounted) {
@@ -290,6 +368,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       setState(() {
         _isTracking = false;
         _trackingStatus = null;
+        _pendingMovementMeters = 0;
       });
     }
   }
@@ -304,8 +383,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
 
     if (newOdometer < widget.car.currentOdometer) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('العداد الجديد أقل من الحالي!',
-            style: GoogleFonts.cairo()),
+        content:
+            Text('العداد الجديد أقل من الحالي!', style: GoogleFonts.cairo()),
         backgroundColor: Colors.orange,
       ));
       return;
@@ -321,8 +400,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       if (mounted) {
         Navigator.pop(context, newOdometer);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('تم تحديث العداد ✅', style: GoogleFonts.cairo()),
+          content: Text('تم تحديث العداد ✅', style: GoogleFonts.cairo()),
           backgroundColor: const Color(0xFF43A047),
         ));
       }
@@ -330,8 +408,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
       setState(() => _isSaving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content:
-              Text('خطأ في الحفظ: $e', style: GoogleFonts.cairo()),
+          content: Text('خطأ في الحفظ: $e', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ));
       }
@@ -400,8 +477,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('العداد الحالي',
-                  style: GoogleFonts.cairo(
-                      color: Colors.white70, fontSize: 13)),
+                  style:
+                      GoogleFonts.cairo(color: Colors.white70, fontSize: 13)),
               Text(
                 '${widget.car.currentOdometer.toStringAsFixed(0)} كم',
                 style: GoogleFonts.cairo(
@@ -411,8 +488,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
               ),
               Text(
                 '${widget.car.make} ${widget.car.model}',
-                style:
-                    GoogleFonts.cairo(color: Colors.white60, fontSize: 12),
+                style: GoogleFonts.cairo(color: Colors.white60, fontSize: 12),
               ),
             ],
           ),
@@ -458,20 +534,17 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF1E88E5)),
-            onChanged: (_) =>
-                setState(() => _source = OdometerSource.manual),
+            onChanged: (_) => setState(() => _source = OdometerSource.manual),
             decoration: InputDecoration(
               hintText: 'مثال: 45000',
               hintStyle: GoogleFonts.cairo(color: Colors.grey),
               suffixText: 'كم',
-              suffixStyle:
-                  GoogleFonts.cairo(color: Colors.grey, fontSize: 16),
+              suffixStyle: GoogleFonts.cairo(color: Colors.grey, fontSize: 16),
               // Camera icon → opens OCR screen
               prefixIcon: Tooltip(
                 message: 'قراءة العداد بالكاميرا',
                 child: IconButton(
-                  icon: const Icon(Icons.camera_alt,
-                      color: Color(0xFF7B1FA2)),
+                  icon: const Icon(Icons.camera_alt, color: Color(0xFF7B1FA2)),
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -497,8 +570,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
               fillColor: const Color(0xFFF5F7FA),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                    color: Color(0xFF1E88E5), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFF1E88E5), width: 2),
               ),
             ),
             validator: (v) {
@@ -514,8 +587,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
             children: [
               Text(
                 'اضغط أيقونة الكاميرا 📷 لقراءة العداد تلقائياً',
-                style:
-                    GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
               ),
             ],
           ),
@@ -631,8 +703,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
           // Tracking status
           if (_trackingStatus != null) ...[
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF43A047).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -648,8 +719,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF43A047)),
+                        strokeWidth: 2, color: Color(0xFF43A047)),
                   ),
                 ],
               ),
@@ -660,8 +730,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
           // Tracked distance result
           if (_trackedDistance > 0 && !_isTracking) ...[
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E88E5).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
@@ -697,8 +766,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
                     borderRadius: BorderRadius.circular(14)),
                 elevation: 3,
               ),
-              icon: Icon(
-                  _isTracking ? Icons.stop : Icons.play_arrow,
+              icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow,
                   color: Colors.white),
               label: Text(
                 _isTracking ? 'إيقاف التتبع ⏹️' : 'بدء التتبع 📍',
@@ -734,8 +802,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     return Align(
       alignment: Alignment.centerRight,
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: color.withAlpha(((0.1) * 255).round()),
           borderRadius: BorderRadius.circular(12),
@@ -763,8 +830,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
         onPressed: _isSaving ? null : _saveOdometer,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF1E88E5),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 4,
         ),
         child: _isSaving
@@ -780,4 +847,3 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     );
   }
 }
-

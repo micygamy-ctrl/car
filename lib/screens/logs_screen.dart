@@ -7,7 +7,6 @@ import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
 import '../services/maintenance_service.dart';
 
-
 class LogsScreen extends StatefulWidget {
   final CarModel car;
 
@@ -21,7 +20,21 @@ class _LogsScreenState extends State<LogsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FuelService _fuelService = FuelService();
-  final MaintenanceService _MaintenanceService = MaintenanceService();
+  final MaintenanceService _maintenanceService = MaintenanceService();
+
+  String _selectedCategory = 'all';
+
+  final List<Map<String, dynamic>> _categories = [
+    {'value': 'all', 'label': 'الكل', 'icon': Icons.list_alt, 'color': Colors.grey},
+    {'value': 'maintenance', 'label': 'صيانة', 'icon': Icons.build, 'color': Color(0xFF43A047)},
+    {'value': 'insurance', 'label': 'تأمين', 'icon': Icons.shield, 'color': Color(0xFF1E88E5)},
+    {'value': 'license', 'label': 'رخصة', 'icon': Icons.credit_card, 'color': Color(0xFF8E24AA)},
+    {'value': 'violation', 'label': 'مخالفة', 'icon': Icons.warning, 'color': Color(0xFFE53935)},
+    {'value': 'wash', 'label': 'غسيل', 'icon': Icons.local_car_wash, 'color': Color(0xFF00ACC1)},
+    {'value': 'inspection', 'label': 'فحص', 'icon': Icons.fact_check, 'color': Color(0xFFFB8C00)},
+    {'value': 'emergency', 'label': 'طوارئ', 'icon': Icons.emergency, 'color': Color(0xFFD81B60)},
+    {'value': 'other', 'label': 'أخرى', 'icon': Icons.more_horiz, 'color': Colors.grey},
+  ];
 
   @override
   void initState() {
@@ -43,7 +56,7 @@ class _LogsScreenState extends State<LogsScreen>
         backgroundColor: const Color(0xFFFB8C00),
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          'السجلات 📋',
+          'السجلات',
           style: GoogleFonts.cairo(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -71,9 +84,9 @@ class _LogsScreenState extends State<LogsScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.build, size: 18),
+                  const Icon(Icons.miscellaneous_services, size: 18),
                   const SizedBox(width: 6),
-                  Text('الصيانة',
+                  Text('الخدمات',
                       style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 ],
               ),
@@ -85,7 +98,7 @@ class _LogsScreenState extends State<LogsScreen>
         controller: _tabController,
         children: [
           _buildFuelLogs(),
-          _buildMaintenanceLogs(),
+          _buildServiceLogs(),
         ],
       ),
     );
@@ -98,20 +111,303 @@ class _LogsScreenState extends State<LogsScreen>
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-
         final logs = snapshot.data ?? [];
-
         if (logs.isEmpty) {
           return _buildEmpty('مفيش سجلات وقود لسه',
               Icons.local_gas_station, const Color(0xFFFB8C00));
         }
-
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: logs.length,
           itemBuilder: (context, index) => _buildFuelCard(logs[index]),
         );
       },
+    );
+  }
+
+  Widget _buildServiceLogs() {
+    return StreamBuilder<List<ServiceLogModel>>(
+      stream: _maintenanceService.getCarMaintenanceLogs(widget.car.carId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final allLogs = snapshot.data ?? [];
+
+        // فلترة حسب التصنيف المختار
+        final logs = _selectedCategory == 'all'
+            ? allLogs
+            : allLogs.where((l) => l.category == _selectedCategory).toList();
+
+        return Column(
+          children: [
+            // فلتر التصنيفات
+            Container(
+              height: 50,
+              color: Colors.white,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final cat = _categories[index];
+                  final isSelected = _selectedCategory == cat['value'];
+                  final color = cat['color'] as Color;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedCategory = cat['value']),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected ? color : color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(cat['icon'] as IconData,
+                              size: 14,
+                              color: isSelected ? Colors.white : color),
+                          const SizedBox(width: 4),
+                          Text(
+                            cat['label'],
+                            style: GoogleFonts.cairo(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // السجلات
+            Expanded(
+              child: logs.isEmpty
+                  ? _buildEmpty('مفيش سجلات لسه',
+                      Icons.miscellaneous_services, const Color(0xFF43A047))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: logs.length,
+                      itemBuilder: (context, index) =>
+                          _buildServiceCard(logs[index]),
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildServiceCard(ServiceLogModel log) {
+    final categoryData = {
+      'maintenance': {'label': 'صيانة', 'icon': Icons.build, 'color': const Color(0xFF43A047)},
+      'insurance': {'label': 'تأمين', 'icon': Icons.shield, 'color': const Color(0xFF1E88E5)},
+      'license': {'label': 'رخصة', 'icon': Icons.credit_card, 'color': const Color(0xFF8E24AA)},
+      'violation': {'label': 'مخالفة', 'icon': Icons.warning, 'color': const Color(0xFFE53935)},
+      'wash': {'label': 'غسيل', 'icon': Icons.local_car_wash, 'color': const Color(0xFF00ACC1)},
+      'inspection': {'label': 'فحص', 'icon': Icons.fact_check, 'color': const Color(0xFFFB8C00)},
+      'emergency': {'label': 'طوارئ', 'icon': Icons.emergency, 'color': const Color(0xFFD81B60)},
+      'oil_change': {'label': 'تغيير زيت', 'icon': Icons.oil_barrel, 'color': Colors.orange},
+      'other': {'label': 'أخرى', 'icon': Icons.more_horiz, 'color': Colors.grey},
+    };
+
+    final data = categoryData[log.category] ?? categoryData['other']!;
+    final color = data['color'] as Color;
+    final icon = data['icon'] as IconData;
+    final label = data['label'] as String;
+
+    // حساب باقي الأيام لو فيه تاريخ انتهاء
+    int? daysLeft;
+    if (log.expiryDate != null) {
+      daysLeft = log.expiryDate!.difference(DateTime.now()).inDays;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, color: color, size: 14),
+                          const SizedBox(width: 4),
+                          Text(label,
+                              style: GoogleFonts.cairo(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${log.cost.toStringAsFixed(0)} ج.م',
+                        style: GoogleFonts.cairo(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      log.title,
+                      style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    Text(
+                      DateFormat('dd/MM/yyyy').format(log.date),
+                      style: GoogleFonts.cairo(
+                          color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (log.garage != null)
+                  _buildLogStat(Icons.garage, log.garage!, Colors.grey),
+                if (log.odometer != null)
+                  _buildLogStat(Icons.speed,
+                      '${log.odometer!.toStringAsFixed(0)} كم', Colors.blue),
+                if (log.provider != null)
+                  _buildLogStat(Icons.business, log.provider!, Colors.purple),
+              ],
+            ),
+
+            // تاريخ الانتهاء
+            if (log.expiryDate != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: daysLeft != null && daysLeft <= 30
+                      ? Colors.red.withOpacity(0.1)
+                      : Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      daysLeft != null && daysLeft <= 0
+                          ? 'انتهت الصلاحية!'
+                          : daysLeft != null && daysLeft <= 30
+                              ? 'ينتهي خلال $daysLeft يوم!'
+                              : 'ينتهي في ${DateFormat('dd/MM/yyyy').format(log.expiryDate!)}',
+                      style: GoogleFonts.cairo(
+                        color: daysLeft != null && daysLeft <= 30
+                            ? Colors.red
+                            : Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      daysLeft != null && daysLeft <= 30
+                          ? Icons.warning
+                          : Icons.check_circle,
+                      color: daysLeft != null && daysLeft <= 30
+                          ? Colors.red
+                          : Colors.green,
+                      size: 14,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // الصيانة القادمة
+            if (log.nextDueOdometer != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'الموعد القادم عند ${log.nextDueOdometer!.toStringAsFixed(0)} كم',
+                      style: GoogleFonts.cairo(
+                          color: Colors.blue, fontSize: 12),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.update, color: Colors.blue, size: 14),
+                  ],
+                ),
+              ),
+            ],
+
+            // ملاحظات
+            if (log.notes != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    log.notes!,
+                    style: GoogleFonts.cairo(
+                        color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.note, color: Colors.grey, size: 14),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -200,158 +496,6 @@ class _LogsScreenState extends State<LogsScreen>
                   const Icon(Icons.check_circle,
                       color: Colors.green, size: 14),
                 ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMaintenanceLogs() {
-    return StreamBuilder<List<ServiceLogModel>>(
-      stream: _MaintenanceService.getCarMaintenanceLogs(widget.car.carId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final logs = snapshot.data ?? [];
-
-        if (logs.isEmpty) {
-          return _buildEmpty('مفيش سجلات صيانة لسه', Icons.build,
-              const Color(0xFF43A047));
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: logs.length,
-          itemBuilder: (context, index) =>
-              _buildMaintenanceCard(logs[index]),
-        );
-      },
-    );
-  }
-
-  Widget _buildMaintenanceCard(ServiceLogModel log) {
-    final categoryData = {
-      'oil_change': {'label': 'تغيير زيت', 'icon': Icons.oil_barrel, 'color': Colors.orange},
-      'tire': {'label': 'إطارات', 'icon': Icons.tire_repair, 'color': Colors.blue},
-      'brakes': {'label': 'فرامل', 'icon': Icons.car_crash, 'color': Colors.red},
-      'inspection': {'label': 'فحص دوري', 'icon': Icons.fact_check, 'color': Colors.green},
-      'other': {'label': 'أخرى', 'icon': Icons.build, 'color': Colors.grey},
-    };
-
-    final data = categoryData[log.category] ?? categoryData['other']!;
-    final color = data['color'] as Color;
-    final icon = data['icon'] as IconData;
-    final label = data['label'] as String;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${log.cost.toStringAsFixed(0)} ج.م',
-                    style: GoogleFonts.cairo(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      log.title,
-                      style: GoogleFonts.cairo(
-                          fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    Text(
-                      DateFormat('dd/MM/yyyy').format(log.date),
-                      style: GoogleFonts.cairo(
-                          color: Colors.grey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (log.garage != null)
-                  _buildLogStat(Icons.garage, log.garage!, Colors.grey),
-                _buildLogStat(
-                    Icons.speed, '${log.odometer} كم', Colors.blue),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(label,
-                          style: GoogleFonts.cairo(
-                              color: color,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 4),
-                      Icon(icon, color: color, size: 14),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (log.nextDueOdometer != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      'الصيانة القادمة عند ${log.nextDueOdometer} كم',
-                      style: GoogleFonts.cairo(
-                          color: Colors.green, fontSize: 12),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.notifications,
-                        color: Colors.green, size: 14),
-                  ],
-                ),
               ),
             ],
           ],

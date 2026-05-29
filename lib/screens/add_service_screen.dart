@@ -2,8 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/maintenance_service.dart';
+import '../services/maintenance_item_service.dart';
+import '../services/car_service.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
+
+class _MaintenanceTemplate {
+  final String title;
+  final IconData icon;
+  final int intervalKm;
+  final int intervalDays;
+
+  const _MaintenanceTemplate({
+    required this.title,
+    required this.icon,
+    required this.intervalKm,
+    required this.intervalDays,
+  });
+}
 
 class AddServiceScreen extends StatefulWidget {
   final CarModel car;
@@ -16,7 +32,10 @@ class AddServiceScreen extends StatefulWidget {
 
 class _AddServiceScreenState extends State<AddServiceScreen> {
   final _formKey = GlobalKey<FormState>();
-  final MaintenanceService _MaintenanceService = MaintenanceService();
+  final MaintenanceService _maintenanceService = MaintenanceService();
+  final MaintenanceItemService _maintenanceItemService =
+      MaintenanceItemService();
+  final CarService _carService = CarService();
 
   final _titleController = TextEditingController();
   final _costController = TextEditingController();
@@ -24,14 +43,83 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final _odometerController = TextEditingController();
   final _garageController = TextEditingController();
   final _nextOdometerController = TextEditingController();
+  final _intervalKmController = TextEditingController();
+  final _intervalDaysController = TextEditingController();
   final _providerController = TextEditingController();
   final _violationNumberController = TextEditingController();
   final _violationLocationController = TextEditingController();
 
   String _selectedCategory = 'maintenance';
+  String _serviceStatus = 'done';
   DateTime _selectedDate = DateTime.now();
   DateTime? _expiryDate;
   bool _isLoading = false;
+  bool _updateCarOdometer = true;
+  bool _addReminder = true;
+  _MaintenanceTemplate? _selectedTemplate;
+
+  final List<_MaintenanceTemplate> _maintenanceTemplates = const [
+    _MaintenanceTemplate(
+      title: 'تغيير زيت الموتور',
+      icon: Icons.oil_barrel,
+      intervalKm: 5000,
+      intervalDays: 180,
+    ),
+    _MaintenanceTemplate(
+      title: 'فلتر الزيت',
+      icon: Icons.filter_alt,
+      intervalKm: 5000,
+      intervalDays: 180,
+    ),
+    _MaintenanceTemplate(
+      title: 'فلتر الهواء',
+      icon: Icons.air,
+      intervalKm: 10000,
+      intervalDays: 365,
+    ),
+    _MaintenanceTemplate(
+      title: 'فلتر التكييف',
+      icon: Icons.ac_unit,
+      intervalKm: 10000,
+      intervalDays: 365,
+    ),
+    _MaintenanceTemplate(
+      title: 'بوجيهات',
+      icon: Icons.bolt,
+      intervalKm: 30000,
+      intervalDays: 730,
+    ),
+    _MaintenanceTemplate(
+      title: 'تيل الفرامل',
+      icon: Icons.car_repair,
+      intervalKm: 20000,
+      intervalDays: 730,
+    ),
+    _MaintenanceTemplate(
+      title: 'زيت الفتيس',
+      icon: Icons.settings,
+      intervalKm: 60000,
+      intervalDays: 1095,
+    ),
+    _MaintenanceTemplate(
+      title: 'مياه التبريد',
+      icon: Icons.water_drop,
+      intervalKm: 40000,
+      intervalDays: 730,
+    ),
+    _MaintenanceTemplate(
+      title: 'البطارية',
+      icon: Icons.battery_charging_full,
+      intervalKm: 0,
+      intervalDays: 730,
+    ),
+    _MaintenanceTemplate(
+      title: 'الإطارات',
+      icon: Icons.album,
+      intervalKm: 50000,
+      intervalDays: 1460,
+    ),
+  ];
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -95,6 +183,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     _odometerController.dispose();
     _garageController.dispose();
     _nextOdometerController.dispose();
+    _intervalKmController.dispose();
+    _intervalDaysController.dispose();
     _providerController.dispose();
     _violationNumberController.dispose();
     _violationLocationController.dispose();
@@ -132,13 +222,67 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     }
   }
 
+  void _selectMaintenanceTemplate(_MaintenanceTemplate template) {
+    final currentOdometer = double.tryParse(_odometerController.text.trim()) ??
+        widget.car.currentOdometer;
+
+    setState(() {
+      _selectedTemplate = template;
+      _selectedCategory = 'maintenance';
+      _titleController.text = template.title;
+      _intervalKmController.text =
+          template.intervalKm == 0 ? '' : template.intervalKm.toString();
+      _intervalDaysController.text =
+          template.intervalDays == 0 ? '' : template.intervalDays.toString();
+      if (template.intervalKm > 0) {
+        _nextOdometerController.text =
+            (currentOdometer + template.intervalKm).toStringAsFixed(0);
+      }
+      if (template.intervalDays > 0) {
+        _expiryDate = _selectedDate.add(Duration(days: template.intervalDays));
+      }
+      _addReminder = true;
+    });
+  }
+
+  void _recalculateNextReminder() {
+    final odometer = double.tryParse(_odometerController.text.trim()) ??
+        widget.car.currentOdometer;
+    final intervalKm = double.tryParse(_intervalKmController.text.trim()) ?? 0;
+    final intervalDays = int.tryParse(_intervalDaysController.text.trim()) ?? 0;
+
+    setState(() {
+      if (intervalKm > 0) {
+        _nextOdometerController.text =
+            (odometer + intervalKm).toStringAsFixed(0);
+      }
+      if (intervalDays > 0) {
+        _expiryDate = _selectedDate.add(Duration(days: intervalDays));
+      }
+    });
+  }
+
   Future<void> _saveServiceLog() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
+      final odometer = _odometerController.text.trim().isEmpty
+          ? null
+          : double.tryParse(_odometerController.text.trim());
+      final intervalKm = _addReminder
+          ? double.tryParse(_intervalKmController.text.trim())
+          : null;
+      final intervalDays =
+          _addReminder ? int.tryParse(_intervalDaysController.text.trim()) : null;
+      final nextDueOdometer =
+          _addReminder && _nextOdometerController.text.trim().isNotEmpty
+              ? double.tryParse(_nextOdometerController.text.trim())
+              : null;
+      final expiryDate = _addReminder ? _expiryDate : null;
+
       final log = ServiceLogModel(
-        logId: _MaintenanceService.generateId(),
+        logId: _maintenanceService.generateId(),
         carId: widget.car.carId,
         category: _selectedCategory,
         title: _titleController.text.trim(),
@@ -147,18 +291,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         notes: _notesController.text.trim().isEmpty
             ? null
             : _notesController.text.trim(),
-        status: 'done',
+        status: _serviceStatus,
         reminderSent: false,
-        odometer: _odometerController.text.trim().isEmpty
-            ? null
-            : double.tryParse(_odometerController.text.trim()),
+        odometer: odometer,
         garage: _garageController.text.trim().isEmpty
             ? null
             : _garageController.text.trim(),
-        nextDueOdometer: _nextOdometerController.text.trim().isEmpty
-            ? null
-            : double.tryParse(_nextOdometerController.text.trim()),
-        expiryDate: _expiryDate,
+        nextDueOdometer: nextDueOdometer,
+        expiryDate: expiryDate,
         provider: _providerController.text.trim().isEmpty
             ? null
             : _providerController.text.trim(),
@@ -170,26 +310,48 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             : _violationLocationController.text.trim(),
       );
 
-      await _MaintenanceService.addServiceLog(log);
+      await _maintenanceService.addServiceLog(log);
+      await _maintenanceItemService.upsertFromServiceLog(
+        log: log,
+        intervalKm: intervalKm,
+        intervalDays: intervalDays,
+      );
+
+      if (_updateCarOdometer &&
+          odometer != null &&
+          odometer > widget.car.currentOdometer) {
+        await _carService.updateCar(widget.car.carId, {
+          'currentOdometer': odometer,
+          'odometerUpdateSource': 'service',
+          'odometerUpdatedAt': DateTime.now(),
+        });
+      }
+
+      if (_selectedCategory == 'maintenance' &&
+          _titleController.text.trim().contains('زيت') &&
+          odometer != null) {
+        await _carService.updateCar(widget.car.carId, {
+          'lastOilChangeOdometer': odometer,
+        });
+      }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم تسجيل الخدمة بنجاح! ✅',
-                style: GoogleFonts.cairo()),
+            content:
+                Text('تم تسجيل الخدمة بنجاح! ✅', style: GoogleFonts.cairo()),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -309,8 +471,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                   _selectedCategory == cat['value'];
                               final color = cat['color'] as Color;
                               return GestureDetector(
-                                onTap: () => setState(
-                                    () => _selectedCategory = cat['value']),
+                                onTap: () => setState(() {
+                                  _selectedCategory = cat['value'];
+                                  if (_selectedCategory != 'maintenance') {
+                                    _selectedTemplate = null;
+                                  }
+                                }),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
                                   decoration: BoxDecoration(
@@ -333,18 +499,16 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                     children: [
                                       Icon(
                                         cat['icon'] as IconData,
-                                        color: isSelected
-                                            ? Colors.white
-                                            : color,
+                                        color:
+                                            isSelected ? Colors.white : color,
                                         size: 24,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         cat['label'],
                                         style: GoogleFonts.cairo(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : color,
+                                          color:
+                                              isSelected ? Colors.white : color,
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -360,6 +524,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
+
+                    if (_selectedCategory == 'maintenance') ...[
+                      _buildMaintenanceTemplates(categoryColor),
+                      const SizedBox(height: 16),
+                    ],
 
                     // البيانات الأساسية
                     _buildCard(
@@ -383,9 +552,17 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                           icon: Icons.attach_money,
                           color: categoryColor,
                           keyboardType: TextInputType.number,
-                          validator: (v) =>
-                              v!.isEmpty ? 'من فضلك أدخل التكلفة' : null,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'من فضلك أدخل التكلفة';
+                            }
+                            if (double.tryParse(v.trim()) == null) {
+                              return 'رقم غير صالح';
+                            }
+                            return null;
+                          },
                         ),
+                        _buildStatusSelector(categoryColor),
 
                         // تاريخ الخدمة
                         GestureDetector(
@@ -415,8 +592,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                     const SizedBox(width: 8),
                                     Text(
                                       'تاريخ الخدمة',
-                                      style: GoogleFonts.cairo(
-                                          color: Colors.grey),
+                                      style:
+                                          GoogleFonts.cairo(color: Colors.grey),
                                     ),
                                   ],
                                 ),
@@ -491,6 +668,18 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               icon: Icons.speed,
               color: color,
               keyboardType: TextInputType.number,
+              onChanged: (_) => _recalculateNextReminder(),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) {
+                  return 'أدخل قراءة العداد';
+                }
+                final value = double.tryParse(v.trim());
+                if (value == null) return 'رقم غير صالح';
+                if (value < widget.car.currentOdometer) {
+                  return 'لا يمكن أن يقل عن العداد الحالي';
+                }
+                return null;
+              },
             ),
             _buildTextField(
               controller: _garageController,
@@ -507,6 +696,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               color: color,
               keyboardType: TextInputType.number,
             ),
+            _buildReminderTools(color),
           ],
         );
 
@@ -583,6 +773,186 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     }
   }
 
+  Widget _buildMaintenanceTemplates(Color color) {
+    return _buildCard(
+      title: 'اختار القطعة',
+      icon: Icons.tune,
+      color: color,
+      children: [
+        GridView.builder(
+          itemCount: _maintenanceTemplates.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 2.45,
+          ),
+          itemBuilder: (context, index) {
+            final template = _maintenanceTemplates[index];
+            final selected = _selectedTemplate?.title == template.title;
+            return InkWell(
+              onTap: () => _selectMaintenanceTemplate(template),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: selected ? color : color.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected ? color : color.withOpacity(0.14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        template.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: GoogleFonts.cairo(
+                          color: selected ? Colors.white : color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      template.icon,
+                      color: selected ? Colors.white : color,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusSelector(Color color) {
+    final statuses = [
+      {'value': 'done', 'label': 'تمت', 'icon': Icons.check_circle},
+      {'value': 'planned', 'label': 'مخططة', 'icon': Icons.event_available},
+      {'value': 'urgent', 'label': 'طارئة', 'icon': Icons.priority_high},
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: statuses.map((status) {
+          final selected = _serviceStatus == status['value'];
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: InkWell(
+                onTap: () => setState(
+                  () => _serviceStatus = status['value'] as String,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: selected ? color : const Color(0xFFF5F7FA),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: selected ? color : const Color(0xFFE6EAF0),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        status['icon'] as IconData,
+                        color: selected ? Colors.white : color,
+                        size: 18,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        status['label'] as String,
+                        style: GoogleFonts.cairo(
+                          color: selected ? Colors.white : color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildReminderTools(Color color) {
+    return Column(
+      children: [
+        SwitchListTile(
+          value: _addReminder,
+          onChanged: (value) => setState(() => _addReminder = value),
+          activeColor: color,
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'إضافة تنبيه للصيانة القادمة',
+            textAlign: TextAlign.right,
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          ),
+          secondary: Icon(Icons.notifications_active, color: color),
+        ),
+        if (_addReminder) ...[
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField(
+                  controller: _intervalDaysController,
+                  label: 'كل كام يوم',
+                  hint: 'مثال: 180',
+                  icon: Icons.calendar_month,
+                  color: color,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _recalculateNextReminder(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildTextField(
+                  controller: _intervalKmController,
+                  label: 'كل كام كم',
+                  hint: 'مثال: 5000',
+                  icon: Icons.route,
+                  color: color,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _recalculateNextReminder(),
+                ),
+              ),
+            ],
+          ),
+          _buildExpiryDatePicker(color),
+        ],
+        SwitchListTile(
+          value: _updateCarOdometer,
+          onChanged: (value) => setState(() => _updateCarOdometer = value),
+          activeColor: color,
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            'تحديث عداد السيارة بهذه القراءة',
+            textAlign: TextAlign.right,
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          ),
+          secondary: Icon(Icons.speed, color: color),
+        ),
+      ],
+    );
+  }
+
   Widget _buildExpiryDatePicker(Color color) {
     return GestureDetector(
       onTap: () => _pickDate(true),
@@ -633,14 +1003,22 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
   String _getHint() {
     switch (_selectedCategory) {
-      case 'maintenance': return 'مثال: تغيير زيت + فلتر';
-      case 'insurance': return 'مثال: تأمين شامل 2025';
-      case 'license': return 'مثال: تجديد رخصة السيارة';
-      case 'violation': return 'مثال: تجاوز السرعة';
-      case 'wash': return 'مثال: غسيل كامل داخلي وخارجي';
-      case 'inspection': return 'مثال: فحص دوري سنوي';
-      case 'emergency': return 'مثال: تغيير إطار طارئ';
-      default: return 'اسم الخدمة';
+      case 'maintenance':
+        return 'مثال: تغيير زيت + فلتر';
+      case 'insurance':
+        return 'مثال: تأمين شامل 2025';
+      case 'license':
+        return 'مثال: تجديد رخصة السيارة';
+      case 'violation':
+        return 'مثال: تجاوز السرعة';
+      case 'wash':
+        return 'مثال: غسيل كامل داخلي وخارجي';
+      case 'inspection':
+        return 'مثال: فحص دوري سنوي';
+      case 'emergency':
+        return 'مثال: تغيير إطار طارئ';
+      default:
+        return 'اسم الخدمة';
     }
   }
 
@@ -696,6 +1074,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     required Color color,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    ValueChanged<String>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -703,6 +1082,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         controller: controller,
         textAlign: TextAlign.right,
         keyboardType: keyboardType,
+        onChanged: onChanged,
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,

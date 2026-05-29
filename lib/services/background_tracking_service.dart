@@ -18,6 +18,7 @@ class _TrackingSession {
   final CarModel car;
   Position? startPosition;
   Position? lastPosition;
+  double totalDistanceMeters = 0;
   int stationaryCount = 0;
   StreamSubscription<Position>? subscription;
 
@@ -26,13 +27,32 @@ class _TrackingSession {
 
 class BackgroundTrackingService {
   BackgroundTrackingService._private();
-  static final BackgroundTrackingService _instance = BackgroundTrackingService._private();
+  static final BackgroundTrackingService _instance =
+      BackgroundTrackingService._private();
   factory BackgroundTrackingService() => _instance;
 
   final ValueNotifier<bool> backgroundEnabled = ValueNotifier<bool>(false);
-  final ValueNotifier<Set<String>> activeTrackings = ValueNotifier<Set<String>>(<String>{});
+  final ValueNotifier<Set<String>> activeTrackings =
+      ValueNotifier<Set<String>>(<String>{});
 
   final Map<String, _TrackingSession> _sessions = {};
+  static const double _minMovementMeters = 10;
+  static const double _maxAcceptedAccuracyMeters = 50;
+  static const double _maxReasonableSegmentMeters = 1000;
+  static const double _stationarySpeedMetersPerSecond = 1.5;
+
+  LocationSettings get _gpsLocationSettings => AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+        intervalDuration: const Duration(seconds: 2),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'تتبع العداد بالخلفية',
+          notificationText: 'يتم حساب مسافة السيارة بالـ GPS.',
+          notificationChannelName: 'تتبع العداد',
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
 
   Future<void> init() async {
     // No-op for now; keep for future initialization
@@ -45,7 +65,8 @@ class BackgroundTrackingService {
     if (await Permission.locationAlways.isDenied) {
       await Permission.locationAlways.request();
     }
-    return await Permission.location.isGranted || await Permission.locationAlways.isGranted;
+    return await Permission.location.isGranted ||
+        await Permission.locationAlways.isGranted;
   }
 
   Future<void> _ensureBackground() async {
@@ -54,12 +75,15 @@ class BackgroundTrackingService {
       notificationTitle: 'تتبع السيارة بالخلفية',
       notificationText: 'التطبيق يراقب حركة السيارة في الخلفية',
       notificationImportance: fb.AndroidNotificationImportance.normal,
-      notificationIcon: fb.AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
+      notificationIcon:
+          fb.AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
     );
 
-    final initialized = await fb.FlutterBackground.initialize(androidConfig: androidConfig);
+    final initialized =
+        await fb.FlutterBackground.initialize(androidConfig: androidConfig);
     if (initialized) {
-      backgroundEnabled.value = await fb.FlutterBackground.enableBackgroundExecution();
+      backgroundEnabled.value =
+          await fb.FlutterBackground.enableBackgroundExecution();
     }
   }
 
@@ -76,15 +100,18 @@ class BackgroundTrackingService {
     final session = _TrackingSession(car);
 
     try {
-      final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
       session.startPosition = position;
       session.lastPosition = position;
 
       session.subscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5),
+        locationSettings: _gpsLocationSettings,
       ).listen((pos) {
         if (session.startPosition == null) session.startPosition = pos;
         if (session.lastPosition == null) session.lastPosition = pos;
+
+        if (pos.accuracy > _maxAcceptedAccuracyMeters) return;
 
         final movedDistance = Geolocator.distanceBetween(
           session.lastPosition!.latitude,
@@ -93,11 +120,20 @@ class BackgroundTrackingService {
           pos.longitude,
         );
 
-        final isStationary = pos.speed < 1.5 || movedDistance < 10;
+        if (movedDistance > _maxReasonableSegmentMeters) {
+          session.lastPosition = pos;
+          return;
+        }
+
+        final hasSpeed = pos.speed >= 0;
+        final isStationary =
+            (hasSpeed && pos.speed < _stationarySpeedMetersPerSecond) ||
+                movedDistance < _minMovementMeters;
         if (isStationary) {
           session.stationaryCount += 1;
         } else {
           session.stationaryCount = 0;
+          session.totalDistanceMeters += movedDistance;
           session.lastPosition = pos;
         }
 
@@ -124,16 +160,11 @@ class BackgroundTrackingService {
 
     if (session.startPosition == null || session.lastPosition == null) {
       activeTrackings.value = {...activeTrackings.value}..remove(carId);
-      return TrackingResult(distanceKm: 0, suggestedOdometer: session.car.currentOdometer);
+      return TrackingResult(
+          distanceKm: 0, suggestedOdometer: session.car.currentOdometer);
     }
 
-    final distanceMeters = Geolocator.distanceBetween(
-      session.startPosition!.latitude,
-      session.startPosition!.longitude,
-      session.lastPosition!.latitude,
-      session.lastPosition!.longitude,
-    );
-    final distanceKm = distanceMeters / 1000;
+    final distanceKm = session.totalDistanceMeters / 1000;
     final suggested = session.car.currentOdometer + distanceKm;
 
     activeTrackings.value = {...activeTrackings.value}..remove(carId);
