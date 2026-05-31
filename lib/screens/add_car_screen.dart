@@ -3,7 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import '../services/auth_service.dart';
 import '../services/car_service.dart';
+import '../services/maintenance_item_service.dart';
 import '../models/car_model.dart';
+import '../models/maintenance_item_model.dart';
 
 class AddCarScreen extends StatefulWidget {
   const AddCarScreen({super.key});
@@ -16,6 +18,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   final _formKey = GlobalKey<FormState>();
   final CarService _carService = CarService();
   final AuthService _authService = AuthService();
+  final MaintenanceItemService _itemService = MaintenanceItemService();
 
   final _makeController = TextEditingController();
   final _customMakeController = TextEditingController();
@@ -29,6 +32,82 @@ class _AddCarScreenState extends State<AddCarScreen> {
   String? _selectedMake;
   String _selectedFuelType = 'petrol';
   bool _isLoading = false;
+
+  // القطع الافتراضية
+  final List<Map<String, dynamic>> _parts = [
+    {
+      'title': 'زيت المحرك',
+      'category': 'maintenance',
+      'icon': Icons.oil_barrel,
+      'color': const Color(0xFFFB8C00),
+      'kmController': TextEditingController(text: '5000'),
+      'daysController': TextEditingController(text: '180'),
+      'enabled': true,
+    },
+    {
+      'title': 'فلتر الهواء',
+      'category': 'maintenance',
+      'icon': Icons.air,
+      'color': const Color(0xFF1E88E5),
+      'kmController': TextEditingController(text: '15000'),
+      'daysController': TextEditingController(text: '365'),
+      'enabled': true,
+    },
+    {
+      'title': 'الكاوتش',
+      'category': 'maintenance',
+      'icon': Icons.tire_repair,
+      'color': const Color(0xFF43A047),
+      'kmController': TextEditingController(text: '40000'),
+      'daysController': TextEditingController(text: ''),
+      'enabled': true,
+    },
+    {
+      'title': 'سيور التوقيت',
+      'category': 'maintenance',
+      'icon': Icons.settings,
+      'color': const Color(0xFF8E24AA),
+      'kmController': TextEditingController(text: '60000'),
+      'daysController': TextEditingController(text: ''),
+      'enabled': true,
+    },
+    {
+      'title': 'الفرامل',
+      'category': 'maintenance',
+      'icon': Icons.dangerous,
+      'color': const Color(0xFFE53935),
+      'kmController': TextEditingController(text: '30000'),
+      'daysController': TextEditingController(text: ''),
+      'enabled': true,
+    },
+    {
+      'title': 'البطارية',
+      'category': 'maintenance',
+      'icon': Icons.battery_charging_full,
+      'color': const Color(0xFF00ACC1),
+      'kmController': TextEditingController(text: ''),
+      'daysController': TextEditingController(text: '730'),
+      'enabled': true,
+    },
+    {
+      'title': 'فلتر الوقود',
+      'category': 'maintenance',
+      'icon': Icons.local_gas_station,
+      'color': const Color(0xFFD81B60),
+      'kmController': TextEditingController(text: '20000'),
+      'daysController': TextEditingController(text: ''),
+      'enabled': true,
+    },
+    {
+      'title': 'سائل التبريد',
+      'category': 'maintenance',
+      'icon': Icons.water_drop,
+      'color': const Color(0xFF0288D1),
+      'kmController': TextEditingController(text: '40000'),
+      'daysController': TextEditingController(text: '730'),
+      'enabled': true,
+    },
+  ];
 
   final List<String> _carMakes = [
     'Toyota', 'Honda', 'Nissan', 'Mazda', 'Mitsubishi',
@@ -51,7 +130,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
     'Isuzu', 'Daewoo', 'Lada', 'Proton',
     'Mahindra', 'Tata', 'VinFast',
     'Lotus', 'Maybach', 'Hummer',
-    'other',
+    'أخرى',
   ];
 
   final List<Map<String, dynamic>> _fuelTypes = [
@@ -71,6 +150,10 @@ class _AddCarScreenState extends State<AddCarScreen> {
     _odometerController.dispose();
     _tankCapacityController.dispose();
     _oilIntervalController.dispose();
+    for (final part in _parts) {
+      (part['kmController'] as TextEditingController).dispose();
+      (part['daysController'] as TextEditingController).dispose();
+    }
     super.dispose();
   }
 
@@ -80,9 +163,11 @@ class _AddCarScreenState extends State<AddCarScreen> {
 
     try {
       final carId = _carService.generateId();
-      final make = _selectedMake == 'other'
+      final make = _selectedMake == 'أخرى'
           ? _customMakeController.text.trim()
           : _makeController.text.trim();
+
+      final odometer = double.parse(_odometerController.text.trim());
 
       final car = CarModel(
         carId: carId,
@@ -91,20 +176,55 @@ class _AddCarScreenState extends State<AddCarScreen> {
         model: _modelController.text.trim(),
         year: int.parse(_yearController.text.trim()),
         licensePlate: _plateController.text.trim(),
-        currentOdometer: double.parse(_odometerController.text.trim()),
+        currentOdometer: odometer,
         fuelType: _selectedFuelType,
         tankCapacity: double.parse(_tankCapacityController.text.trim()),
         oilChangeInterval: double.parse(_oilIntervalController.text.trim()),
-        lastOilChangeOdometer: double.parse(_odometerController.text.trim()),
+        lastOilChangeOdometer: odometer,
       );
 
       await _carService.addCar(car);
+
+      // حفظ القطع المفعّلة
+      for (final part in _parts) {
+        if (!(part['enabled'] as bool)) continue;
+
+        final kmText = (part['kmController'] as TextEditingController).text.trim();
+        final daysText = (part['daysController'] as TextEditingController).text.trim();
+        final intervalKm = double.tryParse(kmText);
+        final intervalDays = int.tryParse(daysText);
+
+        if (intervalKm == null && intervalDays == null) continue;
+
+        final itemId = _itemService.generateId();
+        final nextDueOdometer = intervalKm != null ? odometer + intervalKm : null;
+        final nextDueDate = intervalDays != null
+            ? DateTime.now().add(Duration(days: intervalDays))
+            : null;
+
+        final item = MaintenanceItemModel(
+          itemId: itemId,
+          carId: carId,
+          title: part['title'] as String,
+          category: part['category'] as String,
+          intervalKm: intervalKm,
+          intervalDays: intervalDays,
+          lastServiceOdometer: odometer,
+          lastServiceDate: DateTime.now(),
+          nextDueOdometer: nextDueOdometer,
+          nextDueDate: nextDueDate,
+          enabled: true,
+          updatedAt: DateTime.now(),
+        );
+
+        await _itemService.addCustomItem(item);
+      }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تمت إضافة السيارة بنجاح! 🚗',
+            content: Text('تمت إضافة السيارة وقطعها بنجاح! 🚗',
                 style: GoogleFonts.cairo()),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
@@ -116,8 +236,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -161,7 +280,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
                           ),
                         ),
                         Text(
-                          'أدخل بيانات سيارتك',
+                          'أدخل بيانات سيارتك وقطعها',
                           style: GoogleFonts.cairo(
                             color: Colors.white70,
                             fontSize: 13,
@@ -188,12 +307,12 @@ class _AddCarScreenState extends State<AddCarScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    // بيانات السيارة
                     _buildCard(
                       title: 'بيانات السيارة',
                       icon: Icons.directions_car,
                       color: const Color(0xFF1E88E5),
                       children: [
-                        // Dropdown الماركة مع Search
                         Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: DropdownSearch<String>(
@@ -250,15 +369,14 @@ class _AddCarScreenState extends State<AddCarScreen> {
                                         color: Color(0xFF1E88E5))
                                     : null,
                               ),
-                              constraints: const BoxConstraints(
-                                maxHeight: 300,
-                              ),
+                              constraints:
+                                  const BoxConstraints(maxHeight: 300),
                             ),
                             onChanged: (value) {
                               setState(() {
                                 _selectedMake = value;
                                 _makeController.text = value ?? '';
-                                if (value != 'other') {
+                                if (value != 'أخرى') {
                                   _customMakeController.text = '';
                                 }
                               });
@@ -268,9 +386,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
                                 : null,
                           ),
                         ),
-
-                        // خانة الماركة المخصصة لو اختار "other"
-                        if (_selectedMake == 'other')
+                        if (_selectedMake == 'أخرى')
                           Padding(
                             padding: const EdgeInsets.only(bottom: 16),
                             child: TextFormField(
@@ -299,7 +415,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
                                 ),
                               ),
                               validator: (v) {
-                                if (_selectedMake == 'other' &&
+                                if (_selectedMake == 'أخرى' &&
                                     (v == null || v.isEmpty)) {
                                   return 'من فضلك اكتب اسم الماركة';
                                 }
@@ -307,7 +423,6 @@ class _AddCarScreenState extends State<AddCarScreen> {
                               },
                             ),
                           ),
-
                         _buildTextField(
                           controller: _modelController,
                           label: 'الموديل',
@@ -429,6 +544,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // بيانات العداد
                     _buildCard(
                       title: 'بيانات العداد والوقود',
                       icon: Icons.speed,
@@ -466,6 +582,178 @@ class _AddCarScreenState extends State<AddCarScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    // قطع السيارة
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                'قطع السيارة والتذكيرات 🔧',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF8E24AA),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.build_circle,
+                                  color: Color(0xFF8E24AA), size: 20),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'حدد فترة تغيير كل قطعة بالكيلو أو بالأيام',
+                            style: GoogleFonts.cairo(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                          const Divider(height: 20),
+                          ...List.generate(_parts.length, (index) {
+                            final part = _parts[index];
+                            final color = part['color'] as Color;
+                            final enabled = part['enabled'] as bool;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: enabled
+                                    ? color.withOpacity(0.05)
+                                    : const Color(0xFFF5F7FA),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: enabled
+                                      ? color.withOpacity(0.3)
+                                      : Colors.grey.withOpacity(0.2),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Switch(
+                                        value: enabled,
+                                        onChanged: (v) => setState(
+                                            () => _parts[index]['enabled'] = v),
+                                        activeColor: color,
+                                      ),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            part['title'] as String,
+                                            style: GoogleFonts.cairo(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: enabled
+                                                  ? color
+                                                  : Colors.grey,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            part['icon'] as IconData,
+                                            color:
+                                                enabled ? color : Colors.grey,
+                                            size: 18,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  if (enabled) ...[
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: part['daysController']
+                                                as TextEditingController,
+                                            textAlign: TextAlign.center,
+                                            keyboardType: TextInputType.number,
+                                            style: GoogleFonts.cairo(
+                                                fontSize: 13),
+                                            decoration: InputDecoration(
+                                              labelText: 'يوم',
+                                              labelStyle: GoogleFonts.cairo(
+                                                  fontSize: 12),
+                                              filled: true,
+                                              fillColor: Colors.white,
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                borderSide: BorderSide.none,
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 10),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text('أو',
+                                            style: GoogleFonts.cairo(
+                                                color: Colors.grey,
+                                                fontSize: 12)),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: part['kmController']
+                                                as TextEditingController,
+                                            textAlign: TextAlign.center,
+                                            keyboardType: TextInputType.number,
+                                            style: GoogleFonts.cairo(
+                                                fontSize: 13),
+                                            decoration: InputDecoration(
+                                              labelText: 'كيلو',
+                                              labelStyle: GoogleFonts.cairo(
+                                                  fontSize: 12),
+                                              filled: true,
+                                              fillColor: Colors.white,
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                borderSide: BorderSide.none,
+                                              ),
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 10),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
 
                     SizedBox(
@@ -484,7 +772,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
                             ? const CircularProgressIndicator(
                                 color: Colors.white)
                             : Text(
-                                'حفظ السيارة 🚗',
+                                'حفظ السيارة وقطعها 🚗',
                                 style: GoogleFonts.cairo(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

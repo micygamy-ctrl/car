@@ -8,6 +8,8 @@ import 'odometer_update_screen.dart';
 import '../services/background_tracking_service.dart';
 import 'car_details_screen.dart';
 import 'settings_screen.dart';
+import 'car_dashboard_screen.dart';
+
 
 
 class HomeScreen extends StatefulWidget {
@@ -228,13 +230,13 @@ bool oilSoon = kmToNextOil <= 500;
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CarDetailsScreen(car: car),
-          ),
-        );
-      },
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => CarDashboardScreen(car: car),
+    ),
+  );
+},
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(

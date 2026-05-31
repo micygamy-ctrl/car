@@ -8,7 +8,7 @@ import '../services/car_service.dart';
 import '../services/fuel_service.dart';
 import '../services/maintenance_health_service.dart';
 import '../services/maintenance_service.dart';
-import '../services/map_screen.dart';
+import 'map_screen.dart';
 import '../services/notification_service.dart';
 import 'add_fuel_screen.dart';
 import 'add_service_screen.dart';
@@ -16,6 +16,7 @@ import 'edit_car_screen.dart';
 import 'logs_screen.dart';
 import 'odometer_update_screen.dart';
 import 'reports_screen.dart';
+import 'car_dashboard_screen.dart';
 
 class CarDetailsScreen extends StatelessWidget {
   final CarModel car;
