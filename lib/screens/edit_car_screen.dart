@@ -31,7 +31,6 @@ class _EditCarScreenState extends State<EditCarScreen> {
     {'value': 'petrol', 'label': 'بنزين', 'icon': Icons.local_gas_station},
     {'value': 'diesel', 'label': 'ديزل', 'icon': Icons.oil_barrel},
     {'value': 'hybrid', 'label': 'هايبريد', 'icon': Icons.electric_bolt},
-    {'value': 'electric', 'label': 'كهرباء', 'icon': Icons.electric_car},
   ];
 
   @override

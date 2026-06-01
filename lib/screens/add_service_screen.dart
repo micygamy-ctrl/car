@@ -6,6 +6,7 @@ import '../services/maintenance_item_service.dart';
 import '../services/car_service.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
+import '../services/car_part_service.dart';
 
 class _MaintenanceTemplate {
   final String title;
@@ -36,6 +37,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final MaintenanceItemService _maintenanceItemService =
       MaintenanceItemService();
   final CarService _carService = CarService();
+  final CarPartService _carPartService = CarPartService();
 
   final _titleController = TextEditingController();
   final _costController = TextEditingController();
@@ -60,64 +62,76 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
   final List<_MaintenanceTemplate> _maintenanceTemplates = const [
     _MaintenanceTemplate(
+      title: 'تغيير فلتر الزيت',
+      icon: Icons.filter_alt,
+      intervalKm: 5000,
+      intervalDays: 180,
+    ),
+    _MaintenanceTemplate(
       title: 'تغيير زيت الموتور',
       icon: Icons.oil_barrel,
       intervalKm: 5000,
       intervalDays: 180,
     ),
     _MaintenanceTemplate(
-      title: 'فلتر الزيت',
-      icon: Icons.filter_alt,
-      intervalKm: 5000,
-      intervalDays: 180,
-    ),
-    _MaintenanceTemplate(
-      title: 'فلتر الهواء',
+      title: 'تغيير فلتر الهواء',
       icon: Icons.air,
       intervalKm: 10000,
       intervalDays: 365,
     ),
     _MaintenanceTemplate(
-      title: 'فلتر التكييف',
+      title: 'تغيير فلتر التكييف',
       icon: Icons.ac_unit,
       intervalKm: 10000,
       intervalDays: 365,
     ),
     _MaintenanceTemplate(
-      title: 'بوجيهات',
+      title: 'تغيير بوجيهات',
       icon: Icons.bolt,
       intervalKm: 30000,
       intervalDays: 730,
     ),
     _MaintenanceTemplate(
-      title: 'تيل الفرامل',
+      title: 'تغيير تيل الفرامل',
       icon: Icons.car_repair,
       intervalKm: 20000,
       intervalDays: 730,
     ),
     _MaintenanceTemplate(
-      title: 'زيت الفتيس',
+      title: 'تغيير زيت الفتيس',
       icon: Icons.settings,
       intervalKm: 60000,
       intervalDays: 1095,
     ),
     _MaintenanceTemplate(
-      title: 'مياه التبريد',
+      title: 'تغيير سائل التبريد',
       icon: Icons.water_drop,
       intervalKm: 40000,
       intervalDays: 730,
     ),
     _MaintenanceTemplate(
-      title: 'البطارية',
+      title: 'تغيير البطارية',
       icon: Icons.battery_charging_full,
       intervalKm: 0,
       intervalDays: 730,
     ),
     _MaintenanceTemplate(
-      title: 'الإطارات',
+      title: 'تغيير/ الإطارات',
       icon: Icons.album,
       intervalKm: 50000,
       intervalDays: 1460,
+    ),
+    _MaintenanceTemplate(
+      title: 'تغيير زيت الباور',
+      icon: Icons.settings,
+      intervalKm: 60000,
+      intervalDays: 1095,
+    ),
+    _MaintenanceTemplate(
+      title: 'تغيير فلتر الوقود',
+      icon: Icons.settings,
+      intervalKm: 60000,
+      intervalDays: 1095,
     ),
   ];
 
@@ -316,6 +330,19 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         intervalKm: intervalKm,
         intervalDays: intervalDays,
       );
+
+      // تحديث نظام القطع الذكي
+      if (log.category == 'maintenance' && odometer != null) {
+        await _carPartService.upsertFromServiceTitle(
+          carId: widget.car.carId,
+          serviceTitle: log.title,
+          currentOdometer: odometer,
+          intervalKm: intervalKm,
+          intervalDays: intervalDays,
+          nextDueOdometer: nextDueOdometer,
+          nextDueDate: expiryDate,
+        );
+      }
 
       if (_updateCarOdometer &&
           odometer != null &&

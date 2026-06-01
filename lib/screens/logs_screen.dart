@@ -6,6 +6,8 @@ import '../models/fuel_log_model.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
 import '../services/maintenance_service.dart';
+import 'add_service_screen.dart';
+import 'add_fuel_screen.dart';
 
 class LogsScreen extends StatefulWidget {
   final CarModel car;
@@ -52,6 +54,26 @@ class _LogsScreenState extends State<LogsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFFFB8C00),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          _tabController.index == 0 ? 'إضافة صيانة' : 'إضافة وقود',
+          style: GoogleFonts.cairo(
+              color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        onPressed: () {
+          if (_tabController.index == 0) {
+            Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => AddServiceScreen(car: widget.car)));
+          } else {
+            Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => AddFuelScreen(car: widget.car)));
+          }
+        },
+      ),
       appBar: AppBar(
         backgroundColor: const Color(0xFFFB8C00),
         iconTheme: const IconThemeData(color: Colors.white),

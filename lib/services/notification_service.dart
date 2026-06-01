@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
+import '../models/maintenance_log_model.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -97,6 +98,68 @@ class NotificationService {
         title: '⚠️ تغيير الزيت قريب!',
         body: '$carName — باقي ${kmToNextOil.toStringAsFixed(0)} كم لتغيير الزيت.',
       );
+    }
+  }
+
+  /// يفحص كل السجلات اللي عندها expiryDate ويبعت notification لو قريبة أو انتهت
+  Future<void> checkExpiryReminders({
+    required String carName,
+    required List<ServiceLogModel> logs,
+  }) async {
+    final now = DateTime.now();
+    int notifId = 100; // بنبدأ من 100 عشان ما يتعارضش مع Oil Change (id=1)
+
+    for (final log in logs) {
+      if (log.expiryDate == null) continue;
+      final daysLeft = log.expiryDate!.difference(now).inDays;
+
+      if (daysLeft < 0) {
+        await showNotification(
+          id: notifId++,
+          title: '🔴 انتهت الصلاحية!',
+          body: '$carName — ${log.title} انتهت صلاحيته منذ ${daysLeft.abs()} يوم',
+        );
+      } else if (daysLeft <= 7) {
+        await showNotification(
+          id: notifId++,
+          title: '🔴 ينتهي خلال أيام!',
+          body: '$carName — ${log.title} ينتهي خلال $daysLeft يوم فقط!',
+        );
+      } else if (daysLeft <= 30) {
+        await showNotification(
+          id: notifId++,
+          title: '⚠️ تذكير انتهاء صلاحية',
+          body: '$carName — ${log.title} ينتهي خلال $daysLeft يوم',
+        );
+      }
+    }
+  }
+
+  /// يفحص كل القطع اللي nextDueOdometer قريبة من العداد الحالي
+  Future<void> checkOdometerReminders({
+    required String carName,
+    required double currentOdometer,
+    required List<ServiceLogModel> logs,
+  }) async {
+    int notifId = 200;
+
+    for (final log in logs) {
+      if (log.nextDueOdometer == null) continue;
+      final kmLeft = log.nextDueOdometer! - currentOdometer;
+
+      if (kmLeft <= 0) {
+        await showNotification(
+          id: notifId++,
+          title: '🔴 حان موعد الصيانة!',
+          body: '$carName — ${log.title} متأخر ${kmLeft.abs().toStringAsFixed(0)} كم',
+        );
+      } else if (kmLeft <= 500) {
+        await showNotification(
+          id: notifId++,
+          title: '⚠️ صيانة قريبة',
+          body: '$carName — ${log.title} بعد ${kmLeft.toStringAsFixed(0)} كم',
+        );
+      }
     }
   }
 }

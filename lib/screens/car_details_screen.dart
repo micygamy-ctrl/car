@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../models/car_model.dart';
 import '../models/fuel_log_model.dart';
 import '../models/maintenance_log_model.dart';
@@ -16,7 +15,6 @@ import 'edit_car_screen.dart';
 import 'logs_screen.dart';
 import 'odometer_update_screen.dart';
 import 'reports_screen.dart';
-import 'car_dashboard_screen.dart';
 
 class CarDetailsScreen extends StatelessWidget {
   final CarModel car;

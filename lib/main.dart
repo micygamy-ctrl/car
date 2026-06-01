@@ -41,6 +41,17 @@ class MyApp extends StatelessWidget {
         textTheme: GoogleFonts.cairoTextTheme(),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1E88E5),
+          brightness: Brightness.dark,
+        ),
+        textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        cardColor: const Color(0xFF1E1E1E),
+      ),
+      themeMode: ThemeMode.system, // يتبع إعداد الجهاز
       home: FutureBuilder<bool>(
         future: _checkOnboarding(),
         builder: (context, snapshot) {
