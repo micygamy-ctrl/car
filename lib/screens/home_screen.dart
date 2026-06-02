@@ -9,6 +9,7 @@ import '../services/background_tracking_service.dart';
 import 'car_details_screen.dart';
 import 'settings_screen.dart';
 import 'car_dashboard_screen.dart';
+import 'car_location_screen.dart';
 
 
 
@@ -371,6 +372,37 @@ bool oilSoon = kmToNextOil <= 500;
                     ],
                   ),
                 ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CarLocationScreen(),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white.withOpacity(0.15),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.my_location, color: Colors.white),
+                  label: Text(
+                    'أين عربيتي؟',
+                    style: GoogleFonts.cairo(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(

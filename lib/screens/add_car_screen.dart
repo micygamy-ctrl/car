@@ -27,7 +27,7 @@ const Map<String, List<String>> _carModels = {
   'Chevrolet': ['Spark','Aveo','Cruze','Malibu','Camaro','Corvette','Equinox','Trax','Blazer','Traverse','Tahoe','Suburban','Silverado','Colorado','Captiva','Trailblazer'],
   'GMC': ['Sierra','Canyon','Terrain','Acadia','Yukon','Envoy','Jimmy'],
   'Jeep': ['Wrangler','Grand Cherokee','Cherokee','Compass','Renegade','Gladiator','Commander'],
-  'Hyundai': ['Accent','Elantra','Sonata','Tucson','Santa Fe','Creta','Venue','i10','i20','i30','Kona','Palisade','Ioniq','Ioniq 5','Ioniq 6','Azera','Veloster'],
+  'Hyundai': ['Accent','Elantra','Sonata','Tucson','Santa Fe','Creta','Venue','i10','i20','i30','Kona','Palisade','Ioniq','Ioniq 5','Ioniq 6','Azera','Veloster','Verna'],
   'Kia': ['Picanto','Rio','Cerato','K5','Sportage','Sorento','Stinger','Telluride','Sonet','Seltos','Carnival','EV6','Niro'],
   'Peugeot': ['208','308','508','2008','3008','5008','Partner','Expert','Boxer','408','107','206','207','307'],
   'Renault': ['Clio','Megane','Laguna','Duster','Kadjar','Koleos','Captur','Zoe','Talisman','Symbol','Logan','Sandero','Arkana'],

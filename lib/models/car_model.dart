@@ -11,7 +11,7 @@ class CarModel {
   final double oilChangeInterval;
   final double lastOilChangeOdometer;
   final String? photoUrl;
-  final int? engineCc; // 1. تم إضافة المتغير هنا كقيمة اختيارية
+  final int? engineCc;
 
   CarModel({
     required this.carId,
@@ -26,7 +26,7 @@ class CarModel {
     required this.oilChangeInterval,
     required this.lastOilChangeOdometer,
     this.photoUrl,
-    this.engineCc, // 2. تم إضافته هنا داخل الـ Constructor
+    this.engineCc,
   });
 
   Map<String, dynamic> toMap() {
@@ -43,7 +43,7 @@ class CarModel {
       'oilChangeInterval': oilChangeInterval,
       'lastOilChangeOdometer': lastOilChangeOdometer,
       'photoUrl': photoUrl,
-      'engineCc': engineCc, // 3. تم إضافته هنا ليتم حفظه في قاعدة البيانات
+      'engineCc': engineCc,
     };
   }
 
@@ -61,7 +61,7 @@ class CarModel {
       oilChangeInterval: (map['oilChangeInterval'] ?? 5000).toDouble(),
       lastOilChangeOdometer: (map['lastOilChangeOdometer'] ?? 0).toDouble(),
       photoUrl: map['photoUrl'],
-      engineCc: map['engineCc'] as int?, // 4. تم إضافته هنا لاسترجاعه من قاعدة البيانات دون مشاكل
+      engineCc: map['engineCc'],
     );
   }
 }
