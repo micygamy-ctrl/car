@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background/flutter_background.dart' as fb;
 import 'package:google_fonts/google_fonts.dart';
@@ -66,18 +67,26 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     _startAutoGpsTracking();
   }
 
-  LocationSettings get _gpsLocationSettings => AndroidSettings(
+  LocationSettings get _gpsLocationSettings {
+    if (kIsWeb) {
+      return const LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 5,
-        intervalDuration: const Duration(seconds: 2),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'تتبع العداد بالخلفية',
-          notificationText: 'يتم متابعة حركة السيارة لحساب العداد بدقة.',
-          notificationChannelName: 'تتبع العداد',
-          enableWakeLock: true,
-          setOngoing: true,
-        ),
       );
+    }
+    return AndroidSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
+      intervalDuration: const Duration(seconds: 2),
+      foregroundNotificationConfig: const ForegroundNotificationConfig(
+        notificationTitle: 'تتبع العداد بالخلفية',
+        notificationText: 'يتم متابعة حركة السيارة لحساب العداد بدقة.',
+        notificationChannelName: 'تتبع العداد',
+        enableWakeLock: true,
+        setOngoing: true,
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -89,6 +98,14 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
   // ── GPS ─────────────────────────────────────────────────────────────────
 
   Future<bool> _checkPermission() async {
+    if (kIsWeb) {
+      LocationPermission status = await Geolocator.checkPermission();
+      if (status == LocationPermission.denied) {
+        status = await Geolocator.requestPermission();
+      }
+      return status != LocationPermission.denied &&
+          status != LocationPermission.deniedForever;
+    }
     if (await Permission.location.isDenied) {
       await Permission.location.request();
     }
@@ -100,6 +117,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
   }
 
   Future<void> _initBackground() async {
+    if (kIsWeb) return;
     final androidConfig = fb.FlutterBackgroundAndroidConfig(
       notificationTitle: 'تتبع السيارة بالخلفية',
       notificationText: 'التطبيق يراقب حركة السيارة في الخلفية',
@@ -404,11 +422,13 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
           .getCarMaintenanceLogs(widget.car.carId)
           .first;
       await NotificationService().checkOdometerReminders(
+        carId: widget.car.carId,
         carName: '${widget.car.make} ${widget.car.model}',
         currentOdometer: newOdometer,
         logs: logs,
       );
       await NotificationService().checkExpiryReminders(
+        carId: widget.car.carId,
         carName: '${widget.car.make} ${widget.car.model}',
         logs: logs,
       );

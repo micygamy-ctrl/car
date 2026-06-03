@@ -41,24 +41,40 @@ class BackgroundTrackingService {
   static const double _maxReasonableSegmentMeters = 1000;
   static const double _stationarySpeedMetersPerSecond = 1.5;
 
-  LocationSettings get _gpsLocationSettings => AndroidSettings(
+  LocationSettings get _gpsLocationSettings {
+    if (kIsWeb) {
+      return const LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 5,
-        intervalDuration: const Duration(seconds: 2),
-        foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'تتبع العداد بالخلفية',
-          notificationText: 'يتم حساب مسافة السيارة بالـ GPS.',
-          notificationChannelName: 'تتبع العداد',
-          enableWakeLock: true,
-          setOngoing: true,
-        ),
       );
+    }
+    return AndroidSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 5,
+      intervalDuration: const Duration(seconds: 2),
+      foregroundNotificationConfig: const ForegroundNotificationConfig(
+        notificationTitle: 'تتبع العداد بالخلفية',
+        notificationText: 'يتم حساب مسافة السيارة بالـ GPS.',
+        notificationChannelName: 'تتبع العداد',
+        enableWakeLock: true,
+        setOngoing: true,
+      ),
+    );
+  }
 
   Future<void> init() async {
     // No-op for now; keep for future initialization
   }
 
   Future<bool> _checkPermission() async {
+    if (kIsWeb) {
+      LocationPermission status = await Geolocator.checkPermission();
+      if (status == LocationPermission.denied) {
+        status = await Geolocator.requestPermission();
+      }
+      return status != LocationPermission.denied &&
+          status != LocationPermission.deniedForever;
+    }
     if (await Permission.location.isDenied) {
       await Permission.location.request();
     }
@@ -70,6 +86,7 @@ class BackgroundTrackingService {
   }
 
   Future<void> _ensureBackground() async {
+    if (kIsWeb) return;
     if (backgroundEnabled.value) return;
     const androidConfig = fb.FlutterBackgroundAndroidConfig(
       notificationTitle: 'تتبع السيارة بالخلفية',
@@ -138,7 +155,6 @@ class BackgroundTrackingService {
         }
 
         if (session.stationaryCount >= 3) {
-          // auto-stop when stationary
           stopTracking(car.carId);
         }
       }, onError: (_) {

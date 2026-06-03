@@ -24,22 +24,27 @@ class _HomeScreenState extends State<HomeScreen> {
   final CarService carService = CarService();
   final BackgroundTrackingService _bgService = BackgroundTrackingService();
 
+  late final VoidCallback _activeTrackingsListener;
+  late final VoidCallback _backgroundEnabledListener;
+
   @override
   void initState() {
     super.initState();
     _bgService.init();
-    _bgService.activeTrackings.addListener(() => setState(() {}));
-    _bgService.backgroundEnabled.addListener(() => setState(() {}));
+    _activeTrackingsListener = () => setState(() {});
+    _backgroundEnabledListener = () => setState(() {});
+    _bgService.activeTrackings.addListener(_activeTrackingsListener);
+    _bgService.backgroundEnabled.addListener(_backgroundEnabledListener);
     final user = AuthService().currentUser;
-  if (user != null) {
-    ReminderService().runDailyCheck(user.uid);
-  }
+    if (user != null) {
+      ReminderService().runDailyCheck(user.uid);
+    }
   }
 
   @override
   void dispose() {
-    _bgService.activeTrackings.removeListener(() {});
-    _bgService.backgroundEnabled.removeListener(() {});
+    _bgService.activeTrackings.removeListener(_activeTrackingsListener);
+    _bgService.backgroundEnabled.removeListener(_backgroundEnabledListener);
     super.dispose();
   }
 

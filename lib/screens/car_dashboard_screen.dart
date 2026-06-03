@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -30,37 +32,50 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
   final FuelService _fuelService = FuelService();
   final MaintenanceService _maintenanceService = MaintenanceService();
 
+  CarModel? _liveCar;
+  StreamSubscription<CarModel?>? _carSubscription;
+
+  CarModel get _car => _liveCar ?? widget.car;
+
   @override
   void initState() {
     super.initState();
-    // تهيئة القطع الافتراضية لو أول مرة
-    _partService.initDefaultParts(
-        widget.car.carId, widget.car.currentOdometer);
-    // تشغيل التنبيهات
+    _liveCar = _car;
+    _carSubscription = CarService().getCarStream(_car.carId).listen((car) {
+      if (car != null && mounted) setState(() => _liveCar = car);
+    });
+    _partService.initDefaultParts(_car.carId, _car.currentOdometer);
     WidgetsBinding.instance.addPostFrameCallback((_) => _runChecks());
+  }
+
+  @override
+  void dispose() {
+    _carSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _runChecks() async {
     final notif = NotificationService();
-    // فحص الزيت
     await notif.checkOilChangeReminder(
-      carName: '${widget.car.make} ${widget.car.model}',
-      currentOdometer: widget.car.currentOdometer,
-      lastOilChangeOdometer: widget.car.lastOilChangeOdometer,
-      oilChangeInterval: widget.car.oilChangeInterval,
+      carId: _car.carId,
+      carName: '${_car.make} ${_car.model}',
+      currentOdometer: _car.currentOdometer,
+      lastOilChangeOdometer: _car.lastOilChangeOdometer,
+      oilChangeInterval: _car.oilChangeInterval,
     );
-    // جلب السجلات وفحص التنبيهات
     _maintenanceService
-        .getCarMaintenanceLogs(widget.car.carId)
+        .getCarMaintenanceLogs(_car.carId)
         .first
         .then((logs) async {
       await notif.checkExpiryReminders(
-        carName: '${widget.car.make} ${widget.car.model}',
+        carId: _car.carId,
+        carName: '${_car.make} ${_car.model}',
         logs: logs,
       );
       await notif.checkOdometerReminders(
-        carName: '${widget.car.make} ${widget.car.model}',
-        currentOdometer: widget.car.currentOdometer,
+        carId: _car.carId,
+        carName: '${_car.make} ${_car.model}',
+        currentOdometer: _car.currentOdometer,
         logs: logs,
       );
     });
@@ -71,30 +86,30 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       body: StreamBuilder<List<CarPartModel>>(
-        stream: _partService.getCarParts(widget.car.carId),
+        stream: _partService.getCarParts(_car.carId),
         builder: (context, partsSnap) {
           final parts = partsSnap.data ?? [];
 
           // ترتيب القطع: أحمر ← أصفر ← أخضر
           final sortedParts = List<CarPartModel>.from(parts)
             ..sort((a, b) {
-              final sA = a.status(widget.car.currentOdometer).index;
-              final sB = b.status(widget.car.currentOdometer).index;
+              final sA = a.status(_car.currentOdometer).index;
+              final sB = b.status(_car.currentOdometer).index;
               // overdue=0, dueSoon=1, ok=2 — نعكسهم عشان overdue يجي أول
               return sA.compareTo(sB);
             });
 
           final overdueCount = sortedParts
               .where((p) =>
-                  p.status(widget.car.currentOdometer) == PartStatus.overdue)
+                  p.status(_car.currentOdometer) == PartStatus.overdue)
               .length;
           final dueSoonCount = sortedParts
               .where((p) =>
-                  p.status(widget.car.currentOdometer) == PartStatus.dueSoon)
+                  p.status(_car.currentOdometer) == PartStatus.dueSoon)
               .length;
           final okCount = sortedParts
               .where(
-                  (p) => p.status(widget.car.currentOdometer) == PartStatus.ok)
+                  (p) => p.status(_car.currentOdometer) == PartStatus.ok)
               .length;
 
           final healthScore =
@@ -114,7 +129,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => EditCarScreen(car: widget.car)),
+                          builder: (_) => EditCarScreen(car: _car)),
                     ),
                   ),
                   IconButton(
@@ -128,7 +143,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       dueSoonCount, okCount, parts.length),
                 ),
                 title: Text(
-                  '${_cap(widget.car.make)} ${_cap(widget.car.model)}',
+                  '${_cap(_car.make)} ${_cap(_car.model)}',
                   style: GoogleFonts.cairo(
                       color: Colors.white, fontWeight: FontWeight.bold),
                 ),
@@ -148,7 +163,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) =>
-                                        AddFuelScreen(car: widget.car)));
+                                        AddFuelScreen(car: _car)));
                           }),
                           const SizedBox(width: 8),
                           _quickBtn(context, Icons.build, 'خدمة',
@@ -157,7 +172,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) =>
-                                        AddServiceScreen(car: widget.car)));
+                                        AddServiceScreen(car: _car)));
                           }),
                           const SizedBox(width: 8),
                           _quickBtn(context, Icons.speed, 'عداد',
@@ -166,7 +181,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => OdometerUpdateScreen(
-                                        car: widget.car)));
+                                        car: _car)));
                           }),
                           const SizedBox(width: 8),
                           _quickBtn(context, Icons.history, 'سجلات',
@@ -175,7 +190,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) =>
-                                        LogsScreen(car: widget.car)));
+                                        LogsScreen(car: _car)));
                           }),
                           const SizedBox(width: 8),
                           _quickBtn(context, Icons.bar_chart, 'تقارير',
@@ -184,7 +199,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) =>
-                                        ReportsScreen(car: widget.car)));
+                                        ReportsScreen(car: _car)));
                           }),
                         ],
                       ),
@@ -224,7 +239,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       const SizedBox(height: 8),
                       StreamBuilder<List<FuelLogModel>>(
                         stream:
-                            _fuelService.getCarFuelLogs(widget.car.carId),
+                            _fuelService.getCarFuelLogs(_car.carId),
                         builder: (ctx, fuelSnap) {
                           final logs = fuelSnap.data ?? [];
                           if (logs.isEmpty) {
@@ -345,7 +360,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '${_cap(widget.car.make)} ${_cap(widget.car.model)}',
+                    '${_cap(_car.make)} ${_cap(_car.model)}',
                     style: GoogleFonts.cairo(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -353,7 +368,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                     ),
                   ),
                   Text(
-                    '${widget.car.year} • ${widget.car.licensePlate}',
+                    '${_car.year} • ${_car.licensePlate}',
                     style: GoogleFonts.cairo(
                         color: Colors.white70, fontSize: 13),
                   ),
@@ -368,7 +383,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                     child: Row(
                       children: [
                         Text(
-                          '${widget.car.currentOdometer.toStringAsFixed(0)} كم',
+                          '${_car.currentOdometer.toStringAsFixed(0)} كم',
                           style: GoogleFonts.cairo(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -420,7 +435,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
   //  PART CARD
   // ══════════════════════════════════════
   Widget _buildPartCard(CarPartModel part) {
-    final status = part.status(widget.car.currentOdometer);
+    final status = part.status(_car.currentOdometer);
     final Color statusColor;
     final IconData statusIcon;
     final String statusText;
@@ -443,7 +458,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
         break;
     }
 
-    final km = part.kmRemaining(widget.car.currentOdometer);
+    final km = part.kmRemaining(_car.currentOdometer);
     final days = part.daysRemaining();
     String remainingText = '';
     if (km != null) {
@@ -458,7 +473,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
               : 'باقي $days يوم';
     }
 
-    final prog = part.progress(widget.car.currentOdometer);
+    final prog = part.progress(_car.currentOdometer);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -577,7 +592,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
 
     return GestureDetector(
       onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => LogsScreen(car: widget.car))),
+          MaterialPageRoute(builder: (_) => LogsScreen(car: _car))),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -791,7 +806,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('حذف السيارة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
         content: Text(
-          'هل أنت متأكد من حذف "${widget.car.make} ${widget.car.model}"؟\nلن يمكن التراجع عن هذا الإجراء.',
+          'هل أنت متأكد من حذف "${_car.make} ${_car.model}"؟\nلن يمكن التراجع عن هذا الإجراء.',
           style: GoogleFonts.cairo(),
         ),
         actions: [
@@ -808,7 +823,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
     );
 
     if (confirm == true && context.mounted) {
-      await CarService().deleteCar(widget.car.carId);
+      await CarService().deleteCar(_car.carId);
       if (context.mounted) {
         // يرجع لشاشة الـ home
         Navigator.of(context).popUntil((route) => route.isFirst);

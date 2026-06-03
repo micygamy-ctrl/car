@@ -77,7 +77,10 @@ class NotificationService {
     );
   }
 
+  int _carBaseId(String carId) => (carId.hashCode.abs() % 9000);
+
   Future<void> checkOilChangeReminder({
+    required String carId,
     required String carName,
     required double currentOdometer,
     required double lastOilChangeOdometer,
@@ -85,29 +88,31 @@ class NotificationService {
   }) async {
     final kmDriven = currentOdometer - lastOilChangeOdometer;
     final kmToNextOil = oilChangeInterval - kmDriven;
+    final baseId = _carBaseId(carId);
 
     if (kmToNextOil <= 0) {
       await showNotification(
-        id: 1,
+        id: baseId,
         title: '🔴 حان وقت تغيير الزيت!',
         body: '$carName — لقد تجاوزت موعد تغيير الزيت، افحص سيارتك الآن!',
       );
     } else if (kmToNextOil <= 500) {
       await showNotification(
-        id: 1,
+        id: baseId + 1,
         title: '⚠️ تغيير الزيت قريب!',
         body: '$carName — باقي ${kmToNextOil.toStringAsFixed(0)} كم لتغيير الزيت.',
       );
     }
   }
 
-  /// يفحص كل السجلات اللي عندها expiryDate ويبعت notification لو قريبة أو انتهت
   Future<void> checkExpiryReminders({
+    required String carId,
     required String carName,
     required List<ServiceLogModel> logs,
   }) async {
     final now = DateTime.now();
-    int notifId = 100; // بنبدأ من 100 عشان ما يتعارضش مع Oil Change (id=1)
+    final baseId = _carBaseId(carId) + 100;
+    int offset = 0;
 
     for (final log in logs) {
       if (log.expiryDate == null) continue;
@@ -115,19 +120,19 @@ class NotificationService {
 
       if (daysLeft < 0) {
         await showNotification(
-          id: notifId++,
+          id: baseId + offset++,
           title: '🔴 انتهت الصلاحية!',
           body: '$carName — ${log.title} انتهت صلاحيته منذ ${daysLeft.abs()} يوم',
         );
       } else if (daysLeft <= 7) {
         await showNotification(
-          id: notifId++,
+          id: baseId + offset++,
           title: '🔴 ينتهي خلال أيام!',
           body: '$carName — ${log.title} ينتهي خلال $daysLeft يوم فقط!',
         );
       } else if (daysLeft <= 30) {
         await showNotification(
-          id: notifId++,
+          id: baseId + offset++,
           title: '⚠️ تذكير انتهاء صلاحية',
           body: '$carName — ${log.title} ينتهي خلال $daysLeft يوم',
         );
@@ -135,13 +140,14 @@ class NotificationService {
     }
   }
 
-  /// يفحص كل القطع اللي nextDueOdometer قريبة من العداد الحالي
   Future<void> checkOdometerReminders({
+    required String carId,
     required String carName,
     required double currentOdometer,
     required List<ServiceLogModel> logs,
   }) async {
-    int notifId = 200;
+    final baseId = _carBaseId(carId) + 200;
+    int offset = 0;
 
     for (final log in logs) {
       if (log.nextDueOdometer == null) continue;
@@ -149,13 +155,13 @@ class NotificationService {
 
       if (kmLeft <= 0) {
         await showNotification(
-          id: notifId++,
+          id: baseId + offset++,
           title: '🔴 حان موعد الصيانة!',
           body: '$carName — ${log.title} متأخر ${kmLeft.abs().toStringAsFixed(0)} كم',
         );
       } else if (kmLeft <= 500) {
         await showNotification(
-          id: notifId++,
+          id: baseId + offset++,
           title: '⚠️ صيانة قريبة',
           body: '$carName — ${log.title} بعد ${kmLeft.toStringAsFixed(0)} كم',
         );

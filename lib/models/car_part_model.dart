@@ -148,7 +148,7 @@ List<CarPartModel> defaultPartsFor(String carId, double currentOdometer) {
   final now = DateTime.now();
 
   final parts = [
-    ('زيت الموتور', 'engine', 5000, 180),
+    ('تغيير زيت الموتور', 'engine', 5000, 180),
     ('تغيير فلتر الزيت', 'engine', 5000, 180),
     ('تغيير فلتر الهواء', 'engine', 10000, 365),
     ('تغيير فلتر التكييف', 'other', 10000, 365),
@@ -158,8 +158,8 @@ List<CarPartModel> defaultPartsFor(String carId, double currentOdometer) {
     ('تغيير سائل التبريد', 'fluids', 40000, 730),
     ('تغيير البطارية', 'electrical', 0, 730),
     ('تغيير/ الإطارات', 'tires', 50000, 1460),
-    ('تغيير فلتر الوقود', 'engine', 5000, 180),
-    ('تغيير زيت الباور', 'engine', 5000, 180),
+    ('تغيير زيت الباور', 'fluids', 60000, 1095),
+    ('تغيير فلتر الوقود', 'engine', 60000, 1095),
   ];
 
   return parts.map((p) {

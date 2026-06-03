@@ -6,7 +6,6 @@ class CarPartService {
 
   static const String _collection = 'carParts';
 
-  /// جلب كل قطع سيارة معينة
   Stream<List<CarPartModel>> getCarParts(String carId) {
     return _firestore
         .collection(_collection)
@@ -16,13 +15,10 @@ class CarPartService {
         .map((snap) {
       final parts =
           snap.docs.map((d) => CarPartModel.fromMap(d.data())).toList();
-      // ترتيب حسب الأولوية: overdue أول ثم dueSoon ثم ok
-      // (الترتيب الفعلي يتم في الـ widget بعد ما يعرف العداد الحالي)
       return parts;
     });
   }
 
-  /// إضافة أو تحديث قطعة
   Future<void> upsertPart(CarPartModel part) async {
     await _firestore
         .collection(_collection)
@@ -30,7 +26,6 @@ class CarPartService {
         .set(part.toMap(), SetOptions(merge: true));
   }
 
-  /// إضافة القطع الافتراضية لسيارة جديدة (لو مش موجودة)
   Future<void> initDefaultParts(String carId, double currentOdometer) async {
     final existing = await _firestore
         .collection(_collection)
@@ -38,18 +33,17 @@ class CarPartService {
         .limit(1)
         .get();
 
-    if (existing.docs.isNotEmpty) return; // already initialized
+    if (existing.docs.isNotEmpty) return;
 
     final parts = defaultPartsFor(carId, currentOdometer);
     final batch = _firestore.batch();
     for (final part in parts) {
       final ref = _firestore.collection(_collection).doc(part.partId);
-      batch.set(ref, part.toMap(), SetOptions(merge: true));
+      batch.set(ref, part.toMap());
     }
     await batch.commit();
   }
 
-  /// تحديث قطعة بعد عمل صيانة عليها
   Future<void> markServiced({
     required String partId,
     required double currentOdometer,
@@ -78,7 +72,6 @@ class CarPartService {
         .update(updatedPart.toMap());
   }
 
-  /// تحديث قطعة من سجل خدمة (ربط add_service_screen بنظام القطع)
   Future<void> upsertFromServiceTitle({
     required String carId,
     required String serviceTitle,
@@ -88,41 +81,97 @@ class CarPartService {
     required double? nextDueOdometer,
     required DateTime? nextDueDate,
   }) async {
-    final partId =
+    final exactPartId =
         '${carId}_${serviceTitle.trim().replaceAll(' ', '_').replaceAll(RegExp(r'[^\w\u0600-\u06FF]+'), '')}';
 
-    final existing = await _firestore.collection(_collection).doc(partId).get();
     final now = DateTime.now();
+    final category = _guessCategoryFromTitle(serviceTitle);
 
-    // نحدد الـ category من اسم القطعة
-    String category = _guessCategoryFromTitle(serviceTitle);
+    final exactDoc =
+        await _firestore.collection(_collection).doc(exactPartId).get();
 
-    final part = CarPartModel(
-      partId: partId,
-      carId: carId,
-      name: serviceTitle.trim(),
-      category: category,
-      intervalKm: intervalKm,
-      intervalDays: intervalDays,
-      lastServiceOdometer: currentOdometer,
-      lastServiceDate: now,
-      nextDueOdometer: nextDueOdometer,
-      nextDueDate: nextDueDate,
-      enabled: true,
-      updatedAt: now,
-    );
+    String? resolvedDocId;
 
-    await _firestore
-        .collection(_collection)
-        .doc(partId)
-        .set(part.toMap(), SetOptions(merge: true));
+    if (exactDoc.exists) {
+      resolvedDocId = exactPartId;
+    } else {
+      final allParts = await _firestore
+          .collection(_collection)
+          .where('carId', isEqualTo: carId)
+          .where('enabled', isEqualTo: true)
+          .get();
+
+      String? bestMatch;
+      int bestScore = 0;
+      final titleKeywords = _extractKeywords(serviceTitle);
+
+      for (final doc in allParts.docs) {
+        final partName = (doc.data()['name'] as String?) ?? '';
+        final partKeywords = _extractKeywords(partName);
+        final overlap =
+            titleKeywords.intersection(partKeywords).length;
+        if (overlap > bestScore) {
+          bestScore = overlap;
+          bestMatch = doc.id;
+        }
+      }
+
+      if (bestScore >= 1 && bestMatch != null) {
+        resolvedDocId = bestMatch;
+      }
+    }
+
+    if (resolvedDocId != null) {
+      final updateData = <String, dynamic>{
+        'lastServiceOdometer': currentOdometer,
+        'lastServiceDate': now,
+        'updatedAt': now,
+      };
+      if (intervalKm != null) updateData['intervalKm'] = intervalKm;
+      if (intervalDays != null) updateData['intervalDays'] = intervalDays;
+      if (nextDueOdometer != null) updateData['nextDueOdometer'] = nextDueOdometer;
+      if (nextDueDate != null) updateData['nextDueDate'] = nextDueDate;
+      await _firestore
+          .collection(_collection)
+          .doc(resolvedDocId)
+          .update(updateData);
+    } else {
+      final part = CarPartModel(
+        partId: exactPartId,
+        carId: carId,
+        name: serviceTitle.trim(),
+        category: category,
+        intervalKm: intervalKm,
+        intervalDays: intervalDays,
+        lastServiceOdometer: currentOdometer,
+        lastServiceDate: now,
+        nextDueOdometer: nextDueOdometer,
+        nextDueDate: nextDueDate,
+        enabled: true,
+        updatedAt: now,
+      );
+      await _firestore
+          .collection(_collection)
+          .doc(exactPartId)
+          .set(part.toMap());
+    }
   }
 
-  /// تعطيل قطعة (soft delete)
+  Set<String> _extractKeywords(String text) {
+    const stopWords = {
+      'تغيير', 'تبديل', 'فحص', 'تحويل', 'عمل', 'تنظيف', 'إصلاح', 'صيانة',
+    };
+    return text
+        .split(' ')
+        .map((w) => w.trim().replaceAll(RegExp(r'^ال'), ''))
+        .where((w) => w.length > 1 && !stopWords.contains(w))
+        .toSet();
+  }
+
   Future<void> disablePart(String partId) async {
     await _firestore.collection(_collection).doc(partId).update({
       'enabled': false,
-      'updatedAt': DateTime.now(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 

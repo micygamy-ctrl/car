@@ -28,6 +28,7 @@ class CarDetailsScreen extends StatelessWidget {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().checkOilChangeReminder(
+        carId: car.carId,
         carName: '${car.make} ${car.model}',
         currentOdometer: car.currentOdometer,
         lastOilChangeOdometer: car.lastOilChangeOdometer,

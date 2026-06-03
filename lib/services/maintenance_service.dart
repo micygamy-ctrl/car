@@ -6,17 +6,13 @@ class MaintenanceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
 
-  Future<void> addMaintenanceLog(ServiceLogModel log) async {
-    try {
-      await _firestore.collection('serviceLogs').doc(log.logId).set(log.toMap());
-    } catch (e) { rethrow; }
-  }
-
   Future<void> addServiceLog(ServiceLogModel log) async {
     try {
       await _firestore.collection('serviceLogs').doc(log.logId).set(log.toMap());
     } catch (e) { rethrow; }
   }
+
+  Future<void> addMaintenanceLog(ServiceLogModel log) => addServiceLog(log);
 
   Stream<List<ServiceLogModel>> getCarMaintenanceLogs(String carId) {
     return _firestore

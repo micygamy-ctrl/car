@@ -47,6 +47,7 @@ class ReminderService {
 
     // 1. فحص تغيير الزيت
     await NotificationService().checkOilChangeReminder(
+      carId: car.carId,
       carName: carName,
       currentOdometer: car.currentOdometer,
       lastOilChangeOdometer: car.lastOilChangeOdometer,
@@ -66,12 +67,14 @@ class ReminderService {
 
       // 3. فحص التواريخ
       await NotificationService().checkExpiryReminders(
+        carId: car.carId,
         carName: carName,
         logs: logs,
       );
 
       // 4. فحص الكيلومترات
       await NotificationService().checkOdometerReminders(
+        carId: car.carId,
         carName: carName,
         currentOdometer: car.currentOdometer,
         logs: logs,

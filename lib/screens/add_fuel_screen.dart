@@ -28,6 +28,26 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
 
   bool _isFullTank = true;
   bool _isLoading = false;
+  double _lastFullTankOdometer = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastFullTankOdometer = widget.car.currentOdometer;
+    _loadLastFullTankOdometer();
+  }
+
+  Future<void> _loadLastFullTankOdometer() async {
+    try {
+      final logs = await _fuelService.getCarFuelLogs(widget.car.carId).first;
+      final fullTankLogs = logs.where((l) => l.isFullTank).toList();
+      if (fullTankLogs.isNotEmpty && mounted) {
+        setState(() {
+          _lastFullTankOdometer = fullTankLogs.first.odometer;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -43,7 +63,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
     final currentOdometer = double.tryParse(_odometerController.text.trim());
     final fuelAmount = double.tryParse(_fuelAmountController.text.trim());
     if (currentOdometer == null || fuelAmount == null || fuelAmount == 0) return null;
-    final distance = currentOdometer - widget.car.currentOdometer;
+    final distance = currentOdometer - _lastFullTankOdometer;
     if (distance <= 0) return null;
     return (fuelAmount / distance) * 100;
   }

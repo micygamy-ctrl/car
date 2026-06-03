@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class FuelLogModel {
   final String logId;
   final String carId;
@@ -51,7 +53,9 @@ class FuelLogModel {
     return FuelLogModel(
       logId: map['logId'] ?? '',
       carId: map['carId'] ?? '',
-      date: (map['date'] as dynamic).toDate(),
+      date: map['date'] != null
+          ? (map['date'] as Timestamp).toDate()
+          : DateTime.now(),
       odometer: (map['odometer'] ?? 0).toDouble(),
       odometerSource: map['odometerSource'] ?? 'manual',
       fuelAmount: (map['fuelAmount'] ?? 0).toDouble(),
