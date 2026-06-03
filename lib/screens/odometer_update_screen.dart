@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/car_model.dart';
 import '../services/car_service.dart';
+import '../services/maintenance_service.dart';
 import '../services/notification_service.dart';
 import 'ocr_screen.dart';
 
@@ -394,9 +395,23 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
     try {
       await _carService.updateCar(widget.car.carId, {
         'currentOdometer': newOdometer,
-        'odometerUpdateSource': _source.name, // 'manual' | 'gps' | 'camera'
+        'odometerUpdateSource': _source.name,
         'odometerUpdatedAt': DateTime.now(),
       });
+
+      // فحص تنبيهات الصيانة بعد تحديث العداد
+      final logs = await MaintenanceService()
+          .getCarMaintenanceLogs(widget.car.carId)
+          .first;
+      await NotificationService().checkOdometerReminders(
+        carName: '${widget.car.make} ${widget.car.model}',
+        currentOdometer: newOdometer,
+        logs: logs,
+      );
+      await NotificationService().checkExpiryReminders(
+        carName: '${widget.car.make} ${widget.car.model}',
+        logs: logs,
+      );
       if (mounted) {
         Navigator.pop(context, newOdometer);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

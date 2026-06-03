@@ -332,17 +332,18 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       );
 
       // تحديث نظام القطع الذكي
-      if (log.category == 'maintenance' && odometer != null) {
-        await _carPartService.upsertFromServiceTitle(
-          carId: widget.car.carId,
-          serviceTitle: log.title,
-          currentOdometer: odometer,
-          intervalKm: intervalKm,
-          intervalDays: intervalDays,
-          nextDueOdometer: nextDueOdometer,
-          nextDueDate: expiryDate,
-        );
-      }
+      if (log.category == 'maintenance') {
+  final odometerForPart = odometer ?? widget.car.currentOdometer;
+  await _carPartService.upsertFromServiceTitle(
+    carId: widget.car.carId,
+    serviceTitle: log.title,
+    currentOdometer: odometerForPart,
+    intervalKm: intervalKm,
+    intervalDays: intervalDays,
+    nextDueOdometer: nextDueOdometer,
+    nextDueDate: expiryDate,
+  );
+}
 
       if (_updateCarOdometer &&
           odometer != null &&

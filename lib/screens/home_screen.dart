@@ -10,8 +10,7 @@ import 'car_details_screen.dart';
 import 'settings_screen.dart';
 import 'car_dashboard_screen.dart';
 import 'car_location_screen.dart';
-
-
+import '../services/reminder_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +30,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _bgService.init();
     _bgService.activeTrackings.addListener(() => setState(() {}));
     _bgService.backgroundEnabled.addListener(() => setState(() {}));
+    final user = AuthService().currentUser;
+  if (user != null) {
+    ReminderService().runDailyCheck(user.uid);
+  }
   }
 
   @override

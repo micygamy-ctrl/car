@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/car_location_service.dart';
 
-
 class CarLocationScreen extends StatefulWidget {
   const CarLocationScreen({super.key});
   @override
