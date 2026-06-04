@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/car_service.dart';
 import '../models/car_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/car_part_service.dart';
 
 class EditCarScreen extends StatefulWidget {
   final CarModel car;
@@ -59,42 +61,84 @@ class _EditCarScreenState extends State<EditCarScreen> {
   }
 
   Future<void> _saveCar() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _isLoading = true);
 
-    try {
-      await _carService.updateCar(widget.car.carId, {
-        'make': _makeController.text.trim(),
-        'model': _modelController.text.trim(),
-        'year': int.parse(_yearController.text.trim()),
-        'licensePlate': _plateController.text.trim(),
-        'currentOdometer': double.parse(_odometerController.text.trim()),
-        'fuelType': _selectedFuelType,
-        'tankCapacity': double.parse(_tankCapacityController.text.trim()),
-        'oilChangeInterval': double.parse(_oilIntervalController.text.trim()),
-      });
+  try {
+    final newOdometer = double.parse(_odometerController.text.trim());
+    final oldOdometer = widget.car.currentOdometer;
+    
+    // تحديث بيانات السيارة الأساسية
+    await _carService.updateCar(widget.car.carId, {
+      'make': _makeController.text.trim(),
+      'model': _modelController.text.trim(),
+      'year': int.parse(_yearController.text.trim()),
+      'licensePlate': _plateController.text.trim(),
+      'currentOdometer': newOdometer,
+      'fuelType': _selectedFuelType,
+      'tankCapacity': double.parse(_tankCapacityController.text.trim()),
+      'oilChangeInterval': double.parse(_oilIntervalController.text.trim()),
+    });
 
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('تم تحديث بيانات السيارة! 🚗', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+    // لو العداد اتغير → حدّث القطع
+    if (newOdometer != oldOdometer) {
+      await _updatePartsForNewOdometer(newOdometer);
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم تحديث بيانات السيارة! 🚗', style: GoogleFonts.cairo()),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
+
+// دالة جديدة لتحديث القطع
+Future<void> _updatePartsForNewOdometer(double newOdometer) async {
+  final carPartService = CarPartService();
+  
+  // جلب كل قطع السيارة
+  final parts = await FirebaseFirestore.instance
+      .collection('carParts')
+      .where('carId', isEqualTo: widget.car.carId)
+      .where('enabled', isEqualTo: true)
+      .get();
+
+  // تحديث nextDueOdometer لكل قطعة عندها intervalKm
+  final batch = FirebaseFirestore.instance.batch();
+  
+  for (final doc in parts.docs) {
+    final data = doc.data();
+    final intervalKm = data['intervalKm'];
+    final lastServiceOdometer = data['lastServiceOdometer'];
+    
+    if (intervalKm != null && lastServiceOdometer != null) {
+      // إعادة حساب الموعد القادم من العداد الجديد
+      // مش بنغيّر lastServiceOdometer، بس بنتأكد القطعة شايفة العداد الجديد
+      // لو العداد الجديد أكبر من nextDueOdometer، نحدّث
+      final currentNext = data['nextDueOdometer'];
+      if (currentNext == null) {
+        batch.update(doc.reference, {
+          'nextDueOdometer': lastServiceOdometer + intervalKm,
+        });
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
+  
+  await batch.commit();
+}
 
   @override
   Widget build(BuildContext context) {

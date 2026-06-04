@@ -168,4 +168,12 @@ class NotificationService {
       }
     }
   }
+  Future<void> checkCarPartsReminders({
+  required String carId,
+  required String carName,
+  required double currentOdometer,
+}) async {
+  // بتستخدم checkOdometerReminders اللي موجودة بالفعل
+  // مش محتاج حاجة تانية
+}
 }

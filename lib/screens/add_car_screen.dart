@@ -8,7 +8,7 @@ import '../services/car_part_service.dart';
 import '../models/car_model.dart';
 import '../models/car_part_model.dart';
 import '../models/maintenance_item_model.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 // ═══════════════════════════════════════════════════════
 //  موديلات السيارات حسب الماركة
 // ═══════════════════════════════════════════════════════
@@ -232,112 +232,114 @@ class _AddCarScreenState extends State<AddCarScreen> {
     );
   }
 
-  Future<void> _saveCar() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedYear == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('من فضلك اختار سنة الصنع', style: GoogleFonts.cairo()),
-        backgroundColor: Colors.red,
-      ));
-      return;
+Future<void> _saveCar() async {
+  if (!_formKey.currentState!.validate()) return;
+  if (_selectedYear == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('من فضلك اختار سنة الصنع', style: GoogleFonts.cairo())),
+    );
+    return;
+  }
+
+  setState(() => _isLoading = true);
+  try {
+    final carId = _carService.generateId();
+    final odometer = double.tryParse(_odometerController.text.trim()) ?? 0;
+    final make = _selectedMake == 'أخرى' ? _customMakeController.text.trim() : _selectedMake!;
+    final model = (_selectedMake != 'أخرى' && _modelsForMake.isNotEmpty)
+        ? (_selectedModel ?? _customModelController.text.trim())
+        : _customModelController.text.trim();
+
+    final car = CarModel(
+      carId: carId,
+      ownerId: _authService.currentUser!.uid,
+      make: make,
+      model: model,
+      year: _selectedYear!,
+      licensePlate: _plateController.text.trim(),
+      currentOdometer: odometer,
+      fuelType: _selectedFuelType,
+      tankCapacity: double.tryParse(_tankCapacityController.text.trim()) ?? 0,
+      oilChangeInterval: double.tryParse(_oilIntervalController.text.trim()) ?? 5000,
+      lastOilChangeOdometer: odometer,
+      engineCc: int.tryParse(_engineCcController.text.trim()),
+    );
+
+    await _carService.addCar(car);
+
+    final List<Future<void>> itemFutures = [];
+    final List<Future<void>> partFutures = [];
+
+    for (final part in _parts) {
+      if (!(part['enabled'] as bool)) continue;
+
+      final kmText = (part['kmController'] as TextEditingController).text.trim();
+      final daysText = (part['daysController'] as TextEditingController).text.trim();
+      final intervalKm = double.tryParse(kmText);
+      final intervalDays = int.tryParse(daysText);
+      if (intervalKm == null && intervalDays == null) continue;
+
+      final itemId = _itemService.generateId();
+      final nextDueOdometer = intervalKm != null ? odometer + intervalKm : null;
+      final nextDueDate = intervalDays != null
+          ? DateTime.now().add(Duration(days: intervalDays))
+          : null;
+
+      final item = MaintenanceItemModel(
+        itemId: itemId,
+        carId: carId,
+        title: part['title'] as String,
+        category: part['category'] as String,
+        intervalKm: intervalKm,
+        intervalDays: intervalDays,
+        lastServiceOdometer: odometer,
+        lastServiceDate: DateTime.now(),
+        nextDueOdometer: nextDueOdometer,
+        nextDueDate: nextDueDate,
+        enabled: true,
+        updatedAt: DateTime.now(),
+      );
+      itemFutures.add(_itemService.addCustomItem(item));
+
+      final partTitle = part['title'] as String;
+      final carPart = CarPartModel(
+        partId: '${carId}_${partTitle.trim().replaceAll(' ', '_')}',
+        carId: carId,
+        name: partTitle,
+        category: part['category'] as String,
+        intervalKm: intervalKm,
+        intervalDays: intervalDays,
+        lastServiceOdometer: odometer,
+        lastServiceDate: DateTime.now(),
+        nextDueOdometer: nextDueOdometer,
+        nextDueDate: nextDueDate,
+        enabled: true,
+        updatedAt: DateTime.now(),
+      );
+      partFutures.add(_carPartService.upsertPart(carPart));
     }
 
-    setState(() => _isLoading = true);
-    try {
-      final carId = _carService.generateId();
-      final make = _selectedMake == 'أخرى'
-          ? _customMakeController.text.trim()
-          : (_selectedMake ?? '');
+    await Future.wait([...itemFutures, ...partFutures]);
 
-      final model = (_selectedMake == 'أخرى' || _modelsForMake.isEmpty)
-          ? _customModelController.text.trim()
-          : (_selectedModel ?? _customModelController.text.trim());
-
-      final odometer = double.parse(_odometerController.text.trim());
-
-      final car = CarModel(
-        carId: carId,
-        ownerId: _authService.currentUser!.uid,
-        make: make,
-        model: model,
-        year: _selectedYear!,
-        licensePlate: _plateController.text.trim(),
-        currentOdometer: odometer,
-        fuelType: _selectedFuelType,
-        tankCapacity: double.parse(_tankCapacityController.text.trim()),
-        oilChangeInterval: double.parse(_oilIntervalController.text.trim()),
-        lastOilChangeOdometer: odometer,
-        engineCc: int.tryParse(_engineCcController.text.trim()),
-      );
-
-      await _carService.addCar(car);
-
-      for (final part in _parts) {
-        if (!(part['enabled'] as bool)) continue;
-        final kmText = (part['kmController'] as TextEditingController).text.trim();
-        final daysText = (part['daysController'] as TextEditingController).text.trim();
-        final intervalKm = double.tryParse(kmText);
-        final intervalDays = int.tryParse(daysText);
-        if (intervalKm == null && intervalDays == null) continue;
-
-        final itemId = _itemService.generateId();
-        final nextDueOdometer = intervalKm != null ? odometer + intervalKm : null;
-        final nextDueDate = intervalDays != null
-            ? DateTime.now().add(Duration(days: intervalDays))
-            : null;
-
-        final item = MaintenanceItemModel(
-          itemId: itemId,
-          carId: carId,
-          title: part['title'] as String,
-          category: part['category'] as String,
-          intervalKm: intervalKm,
-          intervalDays: intervalDays,
-          lastServiceOdometer: odometer,
-          lastServiceDate: DateTime.now(),
-          nextDueOdometer: nextDueOdometer,
-          nextDueDate: nextDueDate,
-          enabled: true,
-          updatedAt: DateTime.now(),
-        );
-        await _itemService.addCustomItem(item);
-
-        final partTitle = part['title'] as String;
-        final carPart = CarPartModel(
-          partId: '${carId}_${partTitle.trim().replaceAll(' ', '_')}',
-          carId: carId,
-          name: partTitle,
-          category: part['category'] as String,
-          intervalKm: intervalKm,
-          intervalDays: intervalDays,
-          lastServiceOdometer: odometer,
-          lastServiceDate: DateTime.now(),
-          nextDueOdometer: nextDueOdometer,
-          nextDueDate: nextDueDate,
-          enabled: true,
-          updatedAt: DateTime.now(),
-        );
-        await _carPartService.upsertPart(carPart);
-      }
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text('تمت إضافة السيارة بنجاح! 🚗', style: GoogleFonts.cairo()),
           backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+        ),
+      );
     }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {

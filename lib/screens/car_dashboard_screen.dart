@@ -55,31 +55,28 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
   }
 
   Future<void> _runChecks() async {
-    final notif = NotificationService();
-    await notif.checkOilChangeReminder(
-      carId: _car.carId,
+  final notif = NotificationService();
+  await notif.checkOilChangeReminder(
+    carName: '${_car.make} ${_car.model}',
+    currentOdometer: _car.currentOdometer,
+    lastOilChangeOdometer: _car.lastOilChangeOdometer,
+    oilChangeInterval: _car.oilChangeInterval,
+  );
+  _maintenanceService
+      .getCarMaintenanceLogs(_car.carId)
+      .first
+      .then((logs) async {
+    await notif.checkExpiryReminders(
+      carName: '${_car.make} ${_car.model}',
+      logs: logs,
+    );
+    await notif.checkOdometerReminders(
       carName: '${_car.make} ${_car.model}',
       currentOdometer: _car.currentOdometer,
-      lastOilChangeOdometer: _car.lastOilChangeOdometer,
-      oilChangeInterval: _car.oilChangeInterval,
+      logs: logs,
     );
-    _maintenanceService
-        .getCarMaintenanceLogs(_car.carId)
-        .first
-        .then((logs) async {
-      await notif.checkExpiryReminders(
-        carId: _car.carId,
-        carName: '${_car.make} ${_car.model}',
-        logs: logs,
-      );
-      await notif.checkOdometerReminders(
-        carId: _car.carId,
-        carName: '${_car.make} ${_car.model}',
-        currentOdometer: _car.currentOdometer,
-        logs: logs,
-      );
-    });
-  }
+  });
+}
 
   @override
   Widget build(BuildContext context) {

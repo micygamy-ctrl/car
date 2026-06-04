@@ -135,82 +135,100 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
   }
 
   Future<void> _startAutoGpsTracking() async {
-    final hasPermission = await _checkPermission();
-    if (!hasPermission) return;
+  final hasPermission = await _checkPermission();
+  if (!hasPermission) return;
 
-    if (!_backgroundEnabled) {
-      await _initBackground();
+  // Detection فقط — بدون تتبع فعلي
+  _positionStreamSubscription = Geolocator.getPositionStream(
+    locationSettings: _gpsLocationSettings,
+  ).listen((position) {
+    
+    // لو التتبع شغال بالفعل → اشتغل عادي
+    if (_isTracking) {
+      _handleTrackingPosition(position);
+      return;
     }
 
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: _gpsLocationSettings,
-    ).listen((position) {
-      if (_isTracking) {
-        _handleTrackingPosition(position);
-        return;
-      }
-
-      if (_lastPosition == null) {
-        _lastPosition = position;
-        return;
-      }
-
-      if (position.accuracy > _maxAcceptedAccuracyMeters) return;
-
-      final previousPosition = _lastPosition!;
-      final distance = Geolocator.distanceBetween(
-        previousPosition.latitude,
-        previousPosition.longitude,
-        position.latitude,
-        position.longitude,
-      );
-
-      if (distance > _maxAutoStartSegmentMeters) {
-        _lastPosition = position;
-        _pendingMovementMeters = 0;
-        return;
-      }
-
+    if (_lastPosition == null) {
       _lastPosition = position;
+      return;
+    }
 
-      final hasSpeed = position.speed >= 0;
-      final isMoving =
-          (!hasSpeed || position.speed >= _stationarySpeedMetersPerSecond) &&
-              distance >= _minMovementMeters;
+    if (position.accuracy > _maxAcceptedAccuracyMeters) return;
 
-      if (isMoving) {
-        _pendingMovementMeters += distance;
-      } else {
-        _pendingMovementMeters = 0;
+    final distance = Geolocator.distanceBetween(
+      _lastPosition!.latitude, _lastPosition!.longitude,
+      position.latitude, position.longitude,
+    );
+
+    _lastPosition = position;
+
+    final isMoving = position.speed >= _stationarySpeedMetersPerSecond ||
+        distance >= _minMovementMeters;
+
+    if (isMoving) {
+      _pendingMovementMeters += distance;
+    } else {
+      _pendingMovementMeters = 0;
+    }
+
+    // حس بالحركة → اسأل المستخدم (مرة واحدة بس)
+    if (_pendingMovementMeters >= _autoStartMovementMeters && !_movementReminderSent) {
+      _movementReminderSent = true;
+      _pendingMovementMeters = 0;
+      
+      // اسأل المستخدم بدل ما تبدأ تلقائياً
+      if (mounted) {
+        _showMovementDetectedDialog();
       }
+    }
+  });
+}
 
-      if (_pendingMovementMeters >= _autoStartMovementMeters &&
-          !_movementReminderSent) {
-        if (!mounted) return;
-        setState(() {
-          _startPosition = previousPosition;
-          _baseOdometer = double.tryParse(_odometerController.text) ??
-              widget.car.currentOdometer;
-          _trackedDistanceMeters = _pendingMovementMeters;
-          _trackedDistance = _trackedDistanceMeters / 1000;
-          _isTracking = true;
-          _source = OdometerSource.gps;
-          _trackingStatus =
-              'بدأ التتبع تلقائياً بعد حركة 100 متر. استمر في القيادة ثم أوقف التتبع.';
-        });
-        NotificationService().showNotification(
-          id: 2,
-          title: 'بدأ تتبع العداد تلقائياً',
-          body:
-              'تم اكتشاف حركة السيارة لمسافة 100 متر، وبدأ حساب المسافة بالـ GPS.',
-        );
-        _movementReminderSent = true;
-        _pendingMovementMeters = 0;
-      }
-    }, onError: (_) {
-      // Ignore location stream errors here.
-    });
-  }
+// دالة جديدة — تعرض dialog للمستخدم
+void _showMovementDetectedDialog() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(
+        children: [
+          const Icon(Icons.directions_car, color: Color(0xFF1E88E5)),
+          const SizedBox(width: 8),
+          Text('السيارة بتتحرك! 🚗', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        ],
+      ),
+      content: Text(
+        'تم اكتشاف حركة السيارة.\nهل تريد تتبع المسافة وتحديث العداد تلقائياً؟',
+        style: GoogleFonts.cairo(height: 1.6),
+        textAlign: TextAlign.right,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            // المستخدم رفض — مش هنتبع
+            setState(() => _movementReminderSent = false);
+          },
+          child: Text('لا شكراً', style: GoogleFonts.cairo(color: Colors.grey)),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(ctx);
+            // المستخدم وافق — ابدأ التتبع
+            _startTracking();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF1E88E5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text('نعم، تتبع', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    ),
+  );
+}
 
   void _handleTrackingPosition(Position position) {
     if (_startPosition == null) {
