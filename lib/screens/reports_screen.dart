@@ -261,7 +261,7 @@ class _FuelReportTab extends StatelessWidget {
           gridData: FlGridData(
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+                FlLine(color: Colors.grey.withAlpha(38), strokeWidth: 1),
           ),
           barGroups: logs.asMap().entries.map((e) {
             return BarChartGroupData(
@@ -275,7 +275,7 @@ class _FuelReportTab extends StatelessWidget {
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
                     toY: logs.map((l) => l.totalCost).reduce((a, b) => a > b ? a : b) * 1.3,
-                    color: Colors.grey.withOpacity(0.08),
+                    color: Colors.grey.withAlpha(20),
                   ),
                 ),
               ],
@@ -340,7 +340,7 @@ class _FuelReportTab extends StatelessWidget {
           gridData: FlGridData(
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+                FlLine(color: Colors.grey.withAlpha(38), strokeWidth: 1),
           ),
           lineBarsData: [
             LineChartBarData(
@@ -358,7 +358,7 @@ class _FuelReportTab extends StatelessWidget {
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: const Color(0xFF43A047).withOpacity(0.1),
+                color: const Color(0xFF43A047).withAlpha(26),
               ),
             ),
           ],
@@ -519,7 +519,7 @@ class _MaintenanceReportTab extends StatelessWidget {
           gridData: FlGridData(
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+                FlLine(color: Colors.grey.withAlpha(38), strokeWidth: 1),
           ),
           barGroups: logs.asMap().entries.map((e) {
             return BarChartGroupData(
@@ -538,7 +538,7 @@ class _MaintenanceReportTab extends StatelessWidget {
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
                     toY: maxY,
-                    color: Colors.grey.withOpacity(0.08),
+                    color: Colors.grey.withAlpha(20),
                   ),
                 ),
               ],
@@ -711,7 +711,7 @@ class _TotalReportTab extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1E88E5).withOpacity(0.4),
+                          color: const Color(0xFF1E88E5).withAlpha(102),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -783,7 +783,7 @@ class _TotalReportTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withAlpha(38),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -932,7 +932,7 @@ class _TotalReportTab extends StatelessWidget {
           gridData: FlGridData(
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
+                FlLine(color: Colors.grey.withAlpha(38), strokeWidth: 1),
           ),
           barGroups: months.asMap().entries.map((e) {
             final fuel = fuelByMonth[e.value] ?? 0;
@@ -953,7 +953,7 @@ class _TotalReportTab extends StatelessWidget {
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
                     toY: maxY,
-                    color: Colors.grey.withOpacity(0.08),
+                    color: Colors.grey.withAlpha(20),
                   ),
                 ),
               ],
@@ -989,7 +989,7 @@ class _ChartCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withAlpha(15),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -1034,16 +1034,16 @@ Widget _statsGrid(List<_StatData> stats) {
     physics: const NeverScrollableScrollPhysics(),
     crossAxisSpacing: 12,
     mainAxisSpacing: 12,
-    childAspectRatio: 1.6,
+    childAspectRatio: 1.45,
     children: stats.map((s) {
       return Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withAlpha(13),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1054,7 +1054,7 @@ Widget _statsGrid(List<_StatData> stats) {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(s.icon, color: s.color, size: 22),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             RichText(
               text: TextSpan(children: [
                 TextSpan(
@@ -1098,7 +1098,7 @@ Widget _emptyState(String msg, IconData icon) {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 64, color: Colors.grey.withOpacity(0.4)),
+        Icon(icon, size: 64, color: Colors.grey.withAlpha(102)),
         const SizedBox(height: 12),
         Text(msg,
             style: GoogleFonts.cairo(
@@ -1122,7 +1122,7 @@ class _FuelRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withAlpha(10),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -1162,7 +1162,7 @@ class _MaintenanceRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withAlpha(10),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

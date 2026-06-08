@@ -122,7 +122,6 @@ class _AddCarScreenState extends State<AddCarScreen> {
     {'value': 'petrol', 'label': 'بنزين', 'icon': Icons.local_gas_station},
     {'value': 'diesel', 'label': 'ديزل', 'icon': Icons.oil_barrel},
     {'value': 'hybrid', 'label': 'هايبريد', 'icon': Icons.electric_bolt},
-    {'value': 'electric', 'label': 'كهرباء', 'icon': Icons.electric_car},
   ];
 
   List<String> get _modelsForMake {
@@ -429,7 +428,7 @@ Future<void> _saveCar() async {
                                 title: Text(item, style: GoogleFonts.cairo()),
                                 selected: isSelected,
                                 selectedTileColor:
-                                    const Color(0xFF1E88E5).withOpacity(0.1),
+                                    const Color(0xFF1E88E5).withAlpha(26),
                                 trailing: isSelected
                                     ? const Icon(Icons.check,
                                         color: Color(0xFF1E88E5))
@@ -663,7 +662,7 @@ Future<void> _saveCar() async {
         itemBuilder: (ctx, item, isSelected) => ListTile(
           title: Text(item, style: GoogleFonts.cairo()),
           selected: isSelected,
-          selectedTileColor: const Color(0xFF1E88E5).withOpacity(0.1),
+          selectedTileColor: const Color(0xFF1E88E5).withAlpha(26),
           trailing: isSelected
               ? const Icon(Icons.check, color: Color(0xFF1E88E5))
               : null,
@@ -684,7 +683,7 @@ Future<void> _saveCar() async {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha(15),
               blurRadius: 15,
               offset: const Offset(0, 5)),
         ],
@@ -723,7 +722,7 @@ Future<void> _saveCar() async {
                         ? [
                             BoxShadow(
                                 color: const Color(0xFF1E88E5)
-                                    .withOpacity(0.3),
+                                    .withAlpha(76),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4))
                           ]
@@ -761,7 +760,7 @@ Future<void> _saveCar() async {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha(15),
               blurRadius: 15,
               offset: const Offset(0, 5)),
         ],
@@ -794,13 +793,13 @@ Future<void> _saveCar() async {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: enabled
-                    ? color.withOpacity(0.05)
+                    ? color.withAlpha(13)
                     : const Color(0xFFF5F7FA),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color: enabled
-                        ? color.withOpacity(0.3)
-                        : Colors.grey.withOpacity(0.2)),
+                        ? color.withAlpha(76)
+                        : Colors.grey.withAlpha(51)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -922,7 +921,7 @@ Future<void> _saveCar() async {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha(15),
               blurRadius: 15,
               offset: const Offset(0, 5)),
         ],

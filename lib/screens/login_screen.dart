@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -87,8 +88,18 @@ class _LoginScreenState extends State<LoginScreen>
           _nameController.text.trim(),
         );
       }
+
+      // انتقل فوراً بدون انتظار StreamBuilder
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (route) => false,
+        );
+      }
     } catch (e) {
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_getErrorMessage(e.toString()),
@@ -100,8 +111,6 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -188,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen>
                   width: 90,
                   height: 90,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withAlpha(51),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -225,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen>
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
+                          color: Colors.black.withAlpha(38),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),

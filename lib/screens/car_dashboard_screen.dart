@@ -55,28 +55,38 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
   }
 
   Future<void> _runChecks() async {
-  final notif = NotificationService();
-  await notif.checkOilChangeReminder(
-    carName: '${_car.make} ${_car.model}',
-    currentOdometer: _car.currentOdometer,
-    lastOilChangeOdometer: _car.lastOilChangeOdometer,
-    oilChangeInterval: _car.oilChangeInterval,
-  );
-  _maintenanceService
-      .getCarMaintenanceLogs(_car.carId)
-      .first
-      .then((logs) async {
+    final notif = NotificationService();
+    final carName = '${_car.make} ${_car.model}';
+
+    await notif.checkOilChangeReminder(
+      carId: _car.carId,
+      carName: carName,
+      currentOdometer: _car.currentOdometer,
+      lastOilChangeOdometer: _car.lastOilChangeOdometer,
+      oilChangeInterval: _car.oilChangeInterval,
+    );
+
+    final logs = await _maintenanceService.getCarMaintenanceLogs(_car.carId).first;
+    final parts = await _partService.getCarParts(_car.carId).first;
+
     await notif.checkExpiryReminders(
-      carName: '${_car.make} ${_car.model}',
+      carId: _car.carId,
+      carName: carName,
       logs: logs,
     );
     await notif.checkOdometerReminders(
-      carName: '${_car.make} ${_car.model}',
+      carId: _car.carId,
+      carName: carName,
       currentOdometer: _car.currentOdometer,
       logs: logs,
     );
-  });
-}
+    await notif.checkCarPartsReminders(
+      carId: _car.carId,
+      carName: carName,
+      currentOdometer: _car.currentOdometer,
+      parts: parts,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -374,7 +384,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withAlpha(51),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -406,9 +416,9 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.25),
+        color: color.withAlpha(64),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withAlpha(128)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -480,13 +490,13 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: status != PartStatus.ok
-              ? statusColor.withOpacity(0.3)
-              : Colors.grey.withOpacity(0.1),
+              ? statusColor.withAlpha(76)
+              : Colors.grey.withAlpha(26),
           width: status != PartStatus.ok ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withAlpha(10),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -502,7 +512,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withAlpha(26),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -538,7 +548,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: prog,
-              backgroundColor: Colors.grey.withOpacity(0.15),
+              backgroundColor: Colors.grey.withAlpha(38),
               valueColor: AlwaysStoppedAnimation<Color>(statusColor),
               minHeight: 7,
             ),
@@ -597,7 +607,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha(15),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -682,9 +692,9 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withAlpha(26),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha(76)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -736,7 +746,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color.withOpacity(0.5), size: 24),
+          Icon(icon, color: color.withAlpha(128), size: 24),
           const SizedBox(width: 8),
           Text(msg,
               style: GoogleFonts.cairo(color: Colors.grey, fontSize: 14)),
@@ -757,7 +767,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: color.withOpacity(0.15),
+                color: color.withAlpha(38),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -769,7 +779,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
+                  color: color.withAlpha(31),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 18),

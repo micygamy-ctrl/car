@@ -102,9 +102,10 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
             : _notesController.text.trim(),
       );
 
-      await _fuelService.addFuelLog(log);
-      await _carService.updateCar(
-          widget.car.carId, {'currentOdometer': odometer});
+      await Future.wait([
+        _fuelService.addFuelLog(log),
+        _carService.updateCar(widget.car.carId, {'currentOdometer': odometer}),
+      ]);
 
       if (mounted) {
         Navigator.pop(context);
@@ -242,7 +243,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withAlpha(15),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),
@@ -357,7 +358,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withAlpha(15),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),
@@ -402,7 +403,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withAlpha(15),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),

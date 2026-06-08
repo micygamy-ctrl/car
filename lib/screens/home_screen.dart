@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
@@ -11,6 +13,8 @@ import 'settings_screen.dart';
 import 'car_dashboard_screen.dart';
 import 'car_location_screen.dart';
 import '../services/reminder_service.dart';
+import '../services/sms_service.dart';
+import 'fuel_sms_confirmation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +42,33 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = AuthService().currentUser;
     if (user != null) {
       ReminderService().runDailyCheck(user.uid);
+      // فحص SMS بعد ثانيتين حتى تكتمل الشاشة
+      Future.delayed(const Duration(seconds: 2), () => _checkForFuelSms(user.uid));
+    }
+  }
+
+  Future<void> _checkForFuelSms(String uid) async {
+    try {
+      final results = await SmsService().checkNewFuelSms();
+      if (results.isEmpty || !mounted) return;
+
+      final cars = await carService.getUserCars(uid).first;
+      if (!mounted) return;
+
+      for (final sms in results) {
+        if (!mounted) break;
+        await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FuelSmsConfirmationScreen(
+              smsResult: sms,
+              cars: cars,
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      // SMS غير مدعوم أو تم رفض الصلاحية — نتجاهل بصمت
     }
   }
 
@@ -45,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _bgService.activeTrackings.removeListener(_activeTrackingsListener);
     _bgService.backgroundEnabled.removeListener(_backgroundEnabledListener);
+    _bgService.stopAllPassiveMonitors();
     super.dispose();
   }
 
@@ -62,18 +94,17 @@ class _HomeScreenState extends State<HomeScreen> {
             pinned: true,
             backgroundColor: const Color(0xFF1E88E5),
             actions: [
-  IconButton(
-    icon: const Icon(Icons.settings, color: Colors.white),
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const SettingsScreen(),
-        ),
-      );
-    },
-  ),
-],
+              IconButton(
+                icon: const Icon(Icons.settings, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SettingsScreen()),
+                  );
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: const BoxDecoration(
@@ -137,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
             centerTitle: true,
           ),
           StreamBuilder<List<CarModel>>(
-            stream: carService.getUserCars(user!.uid),
+            stream: carService.getUserCars(user?.uid ?? ''),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SliverFillRemaining(
@@ -157,7 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           width: 120,
                           height: 120,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E88E5).withOpacity(0.1),
+                            color:
+                                const Color(0xFF1E88E5).withAlpha(26),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -209,43 +241,346 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const AddCarScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const AddCarScreen()),
           );
         },
         backgroundColor: const Color(0xFF1E88E5),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          'إضافة سيارة',
-          style: GoogleFonts.cairo(color: Colors.white),
-        ),
+        label: Text('إضافة سيارة',
+            style: GoogleFonts.cairo(color: Colors.white)),
       ),
     );
   }
 }
 
-class _CarCard extends StatelessWidget {
+// ══════════════════════════════════════════════════════════════
+//  _CarCard — StatefulWidget مع كشف الحركة التلقائي
+// ══════════════════════════════════════════════════════════════
+class _CarCard extends StatefulWidget {
   final CarModel car;
   final BackgroundTrackingService bgService;
 
   const _CarCard({required this.car, required this.bgService});
 
   @override
+  State<_CarCard> createState() => _CarCardState();
+}
+
+class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
+  bool _dialogPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    widget.bgService.movementDetectedForCar.addListener(_onMovementDetected);
+    widget.bgService.trackingCompleted.addListener(_onTrackingCompleted);
+    _startPassiveMonitor();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.bgService.movementDetectedForCar.removeListener(_onMovementDetected);
+    widget.bgService.trackingCompleted.removeListener(_onTrackingCompleted);
+    widget.bgService.stopPassiveMonitor(widget.car.carId);
+    super.dispose();
+  }
+
+  /// معالجة lifecycle التطبيق
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // التطبيق عاد للمقدمة — أعد تشغيل المراقبة لو مش شغالة
+        if (!widget.bgService.isTrackingForCar(widget.car.carId) &&
+            !widget.bgService.isPassiveMonitoring(widget.car.carId) &&
+            !_dialogPending) {
+          _startPassiveMonitor();
+        }
+        break;
+      case AppLifecycleState.paused:
+        // التطبيق ذهب للخلفية — وقّف المراقبة السلبية لتوفير البطارية
+        // (التتبع الكامل يستمر عبر foreground notification)
+        if (!widget.bgService.isTrackingForCar(widget.car.carId)) {
+          widget.bgService.stopPassiveMonitor(widget.car.carId);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  void _startPassiveMonitor() {
+    widget.bgService.startPassiveMonitor(widget.car);
+  }
+
+  // ─── نهاية التتبع (يدوي أو تلقائي) ───
+  void _onTrackingCompleted() {
+    final entry = widget.bgService.trackingCompleted.value;
+    if (entry == null || entry.key != widget.car.carId) return;
+    if (!mounted) return;
+
+    // لو شاشة العداد مفتوحة → هي ستعالج النتيجة وتستهلكها
+    if (widget.bgService.odometerScreenOpenCars.contains(widget.car.carId)) {
+      Future.delayed(const Duration(seconds: 30), () {
+        if (mounted) _startPassiveMonitor();
+      });
+      return;
+    }
+
+    // أعِد تعيين الـ notifier فورًا حتى لا يُفعَّل مرة ثانية
+    widget.bgService.trackingCompleted.value = null;
+
+    // أعِد المراقبة السلبية بعد 30 ثانية
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) _startPassiveMonitor();
+    });
+
+    _showTrackingResultDialog(entry.value);
+  }
+
+  void _showTrackingResultDialog(TrackingResult res) {
+    if (res.distanceKm < 0.05) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('تم إيقاف التتبع (لم تُسجَّل مسافة كافية)',
+            style: GoogleFonts.cairo()),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(children: [
+            const Text('📏  '),
+            Expanded(
+              child: Text('انتهى التتبع!',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            ),
+          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${widget.car.make} ${widget.car.model}',
+                style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E88E5),
+                    fontSize: 15),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF43A047).withAlpha(20),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${res.distanceKm.toStringAsFixed(1)} كم',
+                      style: GoogleFonts.cairo(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF43A047)),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.route, color: const Color(0xFF43A047), size: 28),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text('هل تريد تحديث عداد السيارة؟',
+                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87)),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child:
+                  Text('لا، شكرًا', style: GoogleFonts.cairo(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF43A047),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.speed, color: Colors.white, size: 18),
+              label: Text('تحديث العداد',
+                  style: GoogleFonts.cairo(color: Colors.white)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OdometerUpdateScreen(
+                      car: widget.car,
+                      initialOdometer: res.suggestedOdometer,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onMovementDetected() {
+    final detectedId = widget.bgService.movementDetectedForCar.value;
+    if (detectedId != widget.car.carId) return;
+    if (_dialogPending) return;
+    if (!mounted) return;
+
+    // إعادة تعيين الـ notifier فورًا حتى لا تُفعّل بطاقات أخرى
+    widget.bgService.movementDetectedForCar.value = null;
+    _dialogPending = true;
+    _showMovementDialog();
+  }
+
+  void _showMovementDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Text('🚗  '),
+              Expanded(
+                child: Text(
+                  'السيارة بتتحرك!',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${widget.car.make} ${widget.car.model}',
+                style: GoogleFonts.cairo(
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E88E5),
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'تم رصد حركة السيارة.\nهل تريد تفعيل تتبع العداد التلقائي؟',
+                style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87),
+              ),
+            ],
+          ),
+          actions: [
+            // تجاهل — يعيد المراقبة بعد 5 دقائق
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _dialogPending = false;
+                Future.delayed(const Duration(minutes: 5), () {
+                  if (mounted) _startPassiveMonitor();
+                });
+              },
+              child: Text('تجاهل',
+                  style: GoogleFonts.cairo(color: Colors.grey[600])),
+            ),
+            // تفعيل التتبع
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E88E5),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.location_on, color: Colors.white, size: 18),
+              label: Text('تفعيل التتبع',
+                  style: GoogleFonts.cairo(color: Colors.white)),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                _dialogPending = false;
+                try {
+                  await widget.bgService.startTracking(widget.car);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('بدأ تتبع العداد! 📍',
+                          style: GoogleFonts.cairo()),
+                      backgroundColor: const Color(0xFF43A047),
+                    ));
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('تعذر بدء التتبع: $e',
+                          style: GoogleFonts.cairo()),
+                      backgroundColor: Colors.red,
+                    ));
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleManualTracking() async {
+    final isTracking =
+        widget.bgService.activeTrackings.value.contains(widget.car.carId);
+
+    if (!isTracking) {
+      try {
+        await widget.bgService.startTracking(widget.car);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('بدأ تتبع السيارة 📍', style: GoogleFonts.cairo()),
+            backgroundColor: const Color(0xFF43A047),
+          ));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('تعذر بدء التتبع: $e', style: GoogleFonts.cairo()),
+            backgroundColor: Colors.red,
+          ));
+        }
+      }
+    } else {
+      // _onTrackingCompleted ستستقبل النتيجة وتعرض الـ dialog
+      await widget.bgService.stopTracking(widget.car.carId);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    double kmDriven = car.currentOdometer - car.lastOilChangeOdometer;
-double kmToNextOil = car.oilChangeInterval - kmDriven;
-bool oilSoon = kmToNextOil <= 500;
+    final car = widget.car;
+    final double kmDriven = car.currentOdometer - car.lastOilChangeOdometer;
+    final double kmToNextOil = car.oilChangeInterval - kmDriven;
+    final bool oilSoon = kmToNextOil <= 500;
 
     return GestureDetector(
-      onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CarDashboardScreen(car: car),
-    ),
-  );
-},
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => CarDashboardScreen(car: car)),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -257,7 +592,7 @@ bool oilSoon = kmToNextOil <= 500;
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E88E5).withOpacity(0.4),
+              color: const Color(0xFF1E88E5).withAlpha(102),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -275,7 +610,7 @@ bool oilSoon = kmToNextOil <= 500;
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withAlpha(51),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -309,10 +644,7 @@ bool oilSoon = kmToNextOil <= 500;
                 ],
               ),
               const SizedBox(height: 20),
-              Container(
-                height: 1,
-                color: Colors.white.withOpacity(0.2),
-              ),
+              Container(height: 1, color: Colors.white.withAlpha(51)),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -322,7 +654,7 @@ bool oilSoon = kmToNextOil <= 500;
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.8),
+                        color: Colors.red.withAlpha(204),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -346,7 +678,7 @@ bool oilSoon = kmToNextOil <= 500;
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.8),
+                        color: Colors.green.withAlpha(204),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -367,10 +699,11 @@ bool oilSoon = kmToNextOil <= 500;
                     ),
                   Row(
                     children: [
-                      const Icon(Icons.speed, color: Colors.white70, size: 18),
+                      const Icon(Icons.speed,
+                          color: Colors.white70, size: 18),
                       const SizedBox(width: 6),
                       Text(
-                        '${car.currentOdometer} كم',
+                        '${car.currentOdometer.toStringAsFixed(0)} كم',
                         style: GoogleFonts.cairo(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -382,6 +715,7 @@ bool oilSoon = kmToNextOil <= 500;
                 ],
               ),
               const SizedBox(height: 10),
+              // زرار الموقع
               SizedBox(
                 width: double.infinity,
                 height: 46,
@@ -390,16 +724,14 @@ bool oilSoon = kmToNextOil <= 500;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CarLocationScreen(),
-                      ),
+                          builder: (context) => CarLocationScreen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.15),
+                    backgroundColor: Colors.white.withAlpha(38),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                        borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
                   icon: const Icon(Icons.my_location, color: Colors.white),
@@ -412,81 +744,50 @@ bool oilSoon = kmToNextOil <= 500;
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ValueListenableBuilder<Set<String>>(
-                  valueListenable: bgService.activeTrackings,
-                  builder: (context, active, _) {
-                    final isTracking = active.contains(car.carId);
-                    return ElevatedButton.icon(
-                      onPressed: () async {
-                        if (!isTracking) {
-                          try {
-                            await bgService.startTracking(car);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('بدأ تتبع السيارة بالخلفية', style: GoogleFonts.cairo()),
-                                backgroundColor: const Color(0xFF43A047),
-                              ));
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('تعذر بدء التتبع: $e', style: GoogleFonts.cairo()),
-                                backgroundColor: Colors.red,
-                              ));
-                            }
-                          }
-                        } else {
-                          final res = await bgService.stopTracking(car.carId);
-                          if (context.mounted) {
-                            if (res != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('تم حساب ${res.distanceKm.toStringAsFixed(1)} كم', style: GoogleFonts.cairo()),
-                                backgroundColor: const Color(0xFF43A047),
-                                action: SnackBarAction(
-                                  label: 'فتح',
-                                  textColor: Colors.white,
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (ctx) => OdometerUpdateScreen(car: car, initialOdometer: res.suggestedOdometer),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('تم إيقاف التتبع', style: GoogleFonts.cairo()),
-                                backgroundColor: const Color(0xFF43A047),
-                              ));
-                            }
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF1E88E5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+              const SizedBox(height: 8),
+              // ─── منطقة التتبع ───
+              ValueListenableBuilder<Set<String>>(
+                valueListenable: widget.bgService.activeTrackings,
+                builder: (context, active, _) {
+                  final isTracking = active.contains(car.carId);
+
+                  if (!isTracking) {
+                    // زرار بدء التتبع
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton.icon(
+                        onPressed: _handleManualTracking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF1E88E5),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
                         ),
-                        elevation: 0,
-                      ),
-                      icon: Icon(isTracking ? Icons.stop : Icons.location_searching),
-                      label: Text(
-                        isTracking ? 'إيقاف التتبع' : 'تشغيل تتبع العداد',
-                        style: GoogleFonts.cairo(
-                          color: const Color(0xFF1E88E5),
-                          fontWeight: FontWeight.bold,
-                        ),
+                        icon: const Icon(Icons.location_searching,
+                            color: Color(0xFF1E88E5)),
+                        label: Text('تشغيل تتبع العداد',
+                            style: GoogleFonts.cairo(
+                                color: const Color(0xFF1E88E5),
+                                fontWeight: FontWeight.bold)),
                       ),
                     );
-                  },
-                ),
+                  }
+
+                  // ─── عداد مرئي أثناء التتبع ───
+                  return ValueListenableBuilder<Map<String, LiveTrackingData>>(
+                    valueListenable: widget.bgService.liveTrackingData,
+                    builder: (context, liveMap, _) {
+                      final live =
+                          liveMap[car.carId] ?? LiveTrackingData.zero;
+                      return _LiveTrackingCard(
+                        live: live,
+                        onStop: _handleManualTracking,
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
@@ -494,8 +795,330 @@ bool oilSoon = kmToNextOil <= 500;
       ),
     );
   }
+
   String _capitalize(String text) {
-  if (text.isEmpty) return text;
-  return text[0].toUpperCase() + text.substring(1);
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
 }
+
+// ══════════════════════════════════════════════════════════════
+//  بطاقة التتبع المرئي (تظهر بدل زر التتبع أثناء الجلسة)
+// ══════════════════════════════════════════════════════════════
+class _LiveTrackingCard extends StatelessWidget {
+  final LiveTrackingData live;
+  final VoidCallback onStop;
+
+  const _LiveTrackingCard({required this.live, required this.onStop});
+
+  @override
+  Widget build(BuildContext context) {
+    final speedColor = live.speedKmh < 60
+        ? const Color(0xFF43A047)
+        : live.speedKmh < 100
+            ? Colors.orange
+            : Colors.red;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(20),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withAlpha(60), width: 1),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Column(
+        children: [
+          // شريط الحالة
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _PulsingDot(),
+              const SizedBox(width: 6),
+              Text('جاري التتبع...',
+                  style: GoogleFonts.cairo(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // العداد المرئي
+          SizedBox(
+            height: 110,
+            child: Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                // رسم الـ Speedometer
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _SpeedometerPainter(speedKmh: live.speedKmh),
+                  ),
+                ),
+                // رقم السرعة في المنتصف أسفل
+                Positioned(
+                  bottom: 6,
+                  child: Column(
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        child: Text(
+                          '${live.speedKmh.toStringAsFixed(0)}',
+                          key: ValueKey(live.speedKmh.toStringAsFixed(0)),
+                          style: GoogleFonts.cairo(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: speedColor),
+                        ),
+                      ),
+                      Text('كم/س',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11, color: Colors.white60)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // المسافة والوقت
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _InfoChip(
+                icon: Icons.route,
+                label: '${live.distanceKm.toStringAsFixed(2)} كم',
+              ),
+              const SizedBox(width: 16),
+              _InfoChip(
+                icon: Icons.timer_outlined,
+                label: _formatDuration(live.elapsedSeconds),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // زرار الإيقاف
+          SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: ElevatedButton.icon(
+              onPressed: onStop,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.withAlpha(200),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.stop, color: Colors.white, size: 18),
+              label: Text('إيقاف التتبع',
+                  style: GoogleFonts.cairo(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white70, size: 14),
+        const SizedBox(width: 4),
+        Text(label,
+            style: GoogleFonts.cairo(
+                color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+// نقطة نبضية متحركة
+class _PulsingDot extends StatefulWidget {
+  @override
+  State<_PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<_PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.4, end: 1.0).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) => Opacity(
+        opacity: _anim.value,
+        child: Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: Color(0xFF43A047),
+            shape: BoxShape.circle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Speedometer Painter — عداد السرعة المرئي
+// ══════════════════════════════════════════════════════════════
+class _SpeedometerPainter extends CustomPainter {
+  final double speedKmh;
+  static const double _maxSpeed = 160;
+  static const double _strokeW = 9;
+
+  const _SpeedometerPainter({required this.speedKmh});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // المركز في أسفل المنتصف
+    final center = Offset(size.width / 2, size.height);
+    final radius =
+        math.min(size.width / 2, size.height) * 0.88;
+
+    // القوس يبدأ من اليسار (π) ويسير باتجاه عقارب الساعة (sweep +π)
+    // مرورًا بالأعلى وصولًا لليمين (0)
+    const startAngle = math.pi;
+    const sweepAngle = math.pi;
+
+    // ─── خلفية القوس ───
+    final bgPaint = Paint()
+      ..color = Colors.white.withAlpha(40)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeW
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        false,
+        bgPaint);
+
+    // ─── مناطق اللون ───
+    void _zone(double from, double to, Color color) {
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _strokeW
+        ..strokeCap = StrokeCap.round;
+      final start = startAngle + (from / _maxSpeed) * sweepAngle;
+      final sweep = ((to - from) / _maxSpeed) * sweepAngle;
+      canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          start,
+          sweep,
+          false,
+          paint);
+    }
+
+    _zone(0, 60, const Color(0xFF43A047).withAlpha(130));
+    _zone(60, 100, Colors.orange.withAlpha(130));
+    _zone(100, 160, Colors.red.withAlpha(130));
+
+    // ─── قوس السرعة الحالية ───
+    final clampedSpeed = speedKmh.clamp(0.0, _maxSpeed);
+    if (clampedSpeed > 0) {
+      final speedColor = clampedSpeed < 60
+          ? const Color(0xFF43A047)
+          : clampedSpeed < 100
+              ? Colors.orange
+              : Colors.red;
+      final speedPaint = Paint()
+        ..color = speedColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _strokeW + 3
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          (clampedSpeed / _maxSpeed) * sweepAngle,
+          false,
+          speedPaint);
+    }
+
+    // ─── الإبرة ───
+    final needleAngle =
+        startAngle + (clampedSpeed / _maxSpeed) * sweepAngle;
+    final needleEnd = Offset(
+      center.dx + (radius * 0.72) * math.cos(needleAngle),
+      center.dy + (radius * 0.72) * math.sin(needleAngle),
+    );
+    final needlePaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(center, needleEnd, needlePaint);
+
+    // ─── نقطة المركز ───
+    canvas.drawCircle(center, 5, Paint()..color = Colors.white);
+    canvas.drawCircle(
+        center, 3, Paint()..color = const Color(0xFF1E88E5));
+
+    // ─── علامات السرعة (0، 60، 120، 160) ───
+    _drawTick(canvas, center, radius, startAngle, 0);
+    _drawTick(canvas, center, radius, startAngle, 60);
+    _drawTick(canvas, center, radius, startAngle, 120);
+    _drawTick(canvas, center, radius, startAngle, 160);
+  }
+
+  void _drawTick(Canvas canvas, Offset center, double radius,
+      double startAngle, double speed) {
+    final angle = startAngle + (speed / _maxSpeed) * math.pi;
+    final inner = Offset(
+      center.dx + (radius - 14) * math.cos(angle),
+      center.dy + (radius - 14) * math.sin(angle),
+    );
+    final outer = Offset(
+      center.dx + (radius + 4) * math.cos(angle),
+      center.dy + (radius + 4) * math.sin(angle),
+    );
+    canvas.drawLine(
+        inner,
+        outer,
+        Paint()
+          ..color = Colors.white54
+          ..strokeWidth = 1.5);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeedometerPainter old) =>
+      old.speedKmh != speedKmh;
 }

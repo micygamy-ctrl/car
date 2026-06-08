@@ -1,12 +1,9 @@
-import 'dart:async';
+import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_background/flutter_background.dart' as fb;
 import 'package:google_fonts/google_fonts.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/car_model.dart';
+import '../services/background_tracking_service.dart';
 import '../services/car_service.dart';
 import '../services/maintenance_service.dart';
 import '../services/notification_service.dart';
@@ -32,23 +29,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
   OdometerSource _source = OdometerSource.manual;
   bool _isTracking = false;
   bool _isSaving = false;
-  Position? _startPosition;
-  Position? _lastPosition;
-  bool _backgroundEnabled = false;
-  bool _movementReminderSent = false;
-  int _stationaryCount = 0;
   double _baseOdometer = 0;
-  double _pendingMovementMeters = 0;
-  double _trackedDistanceMeters = 0;
   double _trackedDistance = 0;
-  String? _trackingStatus;
-  StreamSubscription<Position>? _positionStreamSubscription;
-  static const double _minMovementMeters = 10;
-  static const double _autoStartMovementMeters = 100;
-  static const double _maxAutoStartSegmentMeters = 200;
-  static const double _maxAcceptedAccuracyMeters = 50;
-  static const double _maxReasonableSegmentMeters = 1000;
-  static const double _stationarySpeedMetersPerSecond = 1.5;
 
   @override
   void initState() {
@@ -57,315 +39,74 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
         (widget.initialOdometer ?? widget.car.currentOdometer)
             .toStringAsFixed(1);
     _baseOdometer = widget.car.currentOdometer;
+
     if (widget.initialOdometer != null &&
         widget.initialOdometer! > widget.car.currentOdometer) {
       _trackedDistance = widget.initialOdometer! - widget.car.currentOdometer;
-      _trackedDistanceMeters = _trackedDistance * 1000;
       _source = OdometerSource.gps;
     }
-    _initBackground();
-    _startAutoGpsTracking();
-  }
 
-  LocationSettings get _gpsLocationSettings {
-    if (kIsWeb) {
-      return const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      );
+    final svc = BackgroundTrackingService();
+    // سجّل إن شاشة العداد مفتوحة (يمنع الهوم سكرين من عرض dialog مكرر)
+    svc.odometerScreenOpenCars.add(widget.car.carId);
+
+    // ─── لو التتبع شغال بالفعل من الهوم سكرين ───
+    if (svc.activeTrackings.value.contains(widget.car.carId)) {
+      _isTracking = true;
     }
-    return AndroidSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 5,
-      intervalDuration: const Duration(seconds: 2),
-      foregroundNotificationConfig: const ForegroundNotificationConfig(
-        notificationTitle: 'تتبع العداد بالخلفية',
-        notificationText: 'يتم متابعة حركة السيارة لحساب العداد بدقة.',
-        notificationChannelName: 'تتبع العداد',
-        enableWakeLock: true,
-        setOngoing: true,
-      ),
-    );
+    svc.trackingCompleted.addListener(_onServiceTrackingCompleted);
   }
 
   @override
   void dispose() {
-    _positionStreamSubscription?.cancel();
+    final svc = BackgroundTrackingService();
+    svc.odometerScreenOpenCars.remove(widget.car.carId);
+    svc.trackingCompleted.removeListener(_onServiceTrackingCompleted);
     _odometerController.dispose();
     super.dispose();
   }
 
-  // ── GPS ─────────────────────────────────────────────────────────────────
+  /// يُستدعى لما ينتهي التتبع (يدوي أو تلقائي) من السيرفس
+  void _onServiceTrackingCompleted() {
+    final svc = BackgroundTrackingService();
+    final entry = svc.trackingCompleted.value;
+    if (entry == null || entry.key != widget.car.carId) return;
+    if (!mounted) return;
 
-  Future<bool> _checkPermission() async {
-    if (kIsWeb) {
-      LocationPermission status = await Geolocator.checkPermission();
-      if (status == LocationPermission.denied) {
-        status = await Geolocator.requestPermission();
-      }
-      return status != LocationPermission.denied &&
-          status != LocationPermission.deniedForever;
-    }
-    if (await Permission.location.isDenied) {
-      await Permission.location.request();
-    }
-    if (await Permission.locationAlways.isDenied) {
-      await Permission.locationAlways.request();
-    }
-    return await Permission.location.isGranted ||
-        await Permission.locationAlways.isGranted;
-  }
+    // استهلك الحدث حتى لا يُعالَج مرة ثانية من الهوم سكرين
+    svc.trackingCompleted.value = null;
 
-  Future<void> _initBackground() async {
-    if (kIsWeb) return;
-    final androidConfig = fb.FlutterBackgroundAndroidConfig(
-      notificationTitle: 'تتبع السيارة بالخلفية',
-      notificationText: 'التطبيق يراقب حركة السيارة في الخلفية',
-      notificationIcon:
-          fb.AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
-    );
-
-    final initialized = await fb.FlutterBackground.initialize(
-      androidConfig: androidConfig,
-    );
-    if (initialized) {
-      _backgroundEnabled =
-          await fb.FlutterBackground.enableBackgroundExecution();
-    }
-  }
-
-  Future<void> _startAutoGpsTracking() async {
-  final hasPermission = await _checkPermission();
-  if (!hasPermission) return;
-
-  // Detection فقط — بدون تتبع فعلي
-  _positionStreamSubscription = Geolocator.getPositionStream(
-    locationSettings: _gpsLocationSettings,
-  ).listen((position) {
-    
-    // لو التتبع شغال بالفعل → اشتغل عادي
-    if (_isTracking) {
-      _handleTrackingPosition(position);
-      return;
-    }
-
-    if (_lastPosition == null) {
-      _lastPosition = position;
-      return;
-    }
-
-    if (position.accuracy > _maxAcceptedAccuracyMeters) return;
-
-    final distance = Geolocator.distanceBetween(
-      _lastPosition!.latitude, _lastPosition!.longitude,
-      position.latitude, position.longitude,
-    );
-
-    _lastPosition = position;
-
-    final isMoving = position.speed >= _stationarySpeedMetersPerSecond ||
-        distance >= _minMovementMeters;
-
-    if (isMoving) {
-      _pendingMovementMeters += distance;
-    } else {
-      _pendingMovementMeters = 0;
-    }
-
-    // حس بالحركة → اسأل المستخدم (مرة واحدة بس)
-    if (_pendingMovementMeters >= _autoStartMovementMeters && !_movementReminderSent) {
-      _movementReminderSent = true;
-      _pendingMovementMeters = 0;
-      
-      // اسأل المستخدم بدل ما تبدأ تلقائياً
-      if (mounted) {
-        _showMovementDetectedDialog();
-      }
-    }
-  });
-}
-
-// دالة جديدة — تعرض dialog للمستخدم
-void _showMovementDetectedDialog() {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (ctx) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Row(
-        children: [
-          const Icon(Icons.directions_car, color: Color(0xFF1E88E5)),
-          const SizedBox(width: 8),
-          Text('السيارة بتتحرك! 🚗', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-        ],
-      ),
-      content: Text(
-        'تم اكتشاف حركة السيارة.\nهل تريد تتبع المسافة وتحديث العداد تلقائياً؟',
-        style: GoogleFonts.cairo(height: 1.6),
-        textAlign: TextAlign.right,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(ctx);
-            // المستخدم رفض — مش هنتبع
-            setState(() => _movementReminderSent = false);
-          },
-          child: Text('لا شكراً', style: GoogleFonts.cairo(color: Colors.grey)),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(ctx);
-            // المستخدم وافق — ابدأ التتبع
-            _startTracking();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1E88E5),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: Text('نعم، تتبع', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    ),
-  );
-}
-
-  void _handleTrackingPosition(Position position) {
-    if (_startPosition == null) {
-      _startPosition = position;
-      _lastPosition = position;
-      return;
-    }
-
-    if (_lastPosition == null) {
-      _lastPosition = position;
-      return;
-    }
-
-    if (position.accuracy > _maxAcceptedAccuracyMeters) return;
-
-    final movedDistance = Geolocator.distanceBetween(
-      _lastPosition!.latitude,
-      _lastPosition!.longitude,
-      position.latitude,
-      position.longitude,
-    );
-
-    if (movedDistance > _maxReasonableSegmentMeters) {
-      _lastPosition = position;
-      return;
-    }
-
-    final hasSpeed = position.speed >= 0;
-    final isStationary =
-        (hasSpeed && position.speed < _stationarySpeedMetersPerSecond) ||
-            movedDistance < _minMovementMeters;
-    if (isStationary) {
-      _stationaryCount += 1;
-    } else {
-      _stationaryCount = 0;
-      _trackedDistanceMeters += movedDistance;
-      _lastPosition = position;
-    }
-
-    if (_stationaryCount >= 3) {
-      _stopAutoTracking(position);
-      return;
-    }
-
-    final totalDistanceKm = _trackedDistanceMeters / 1000;
-
-    setState(() {
-      _trackedDistance = totalDistanceKm;
-      _trackingStatus =
-          'تم تتبع الحركة تلقائياً — انتظر حتى تتوقف السيارة لإيقاف التتبع';
-    });
-  }
-
-  void _handleFinalPosition(Position position) {
-    if (_lastPosition == null ||
-        position.accuracy > _maxAcceptedAccuracyMeters) {
-      return;
-    }
-
-    final movedDistance = Geolocator.distanceBetween(
-      _lastPosition!.latitude,
-      _lastPosition!.longitude,
-      position.latitude,
-      position.longitude,
-    );
-
-    final hasSpeed = position.speed >= 0;
-    final isStationary =
-        (hasSpeed && position.speed < _stationarySpeedMetersPerSecond) ||
-            movedDistance < _minMovementMeters;
-
-    if (!isStationary && movedDistance <= _maxReasonableSegmentMeters) {
-      _trackedDistanceMeters += movedDistance;
-      _lastPosition = position;
-    }
-  }
-
-  Future<void> _stopAutoTracking(Position currentPosition) async {
-    if (_startPosition == null) return;
-
-    _handleFinalPosition(currentPosition);
-
-    final distanceKm = _trackedDistanceMeters / 1000;
-    final suggested = _baseOdometer + distanceKm;
-
-    _stationaryCount = 0;
-
+    final result = entry.value;
     setState(() {
       _isTracking = false;
-      _trackedDistance = distanceKm;
-      _odometerController.text = suggested.toStringAsFixed(1);
+      _trackedDistance = result.distanceKm;
+      _odometerController.text = result.suggestedOdometer.toStringAsFixed(1);
       _source = OdometerSource.gps;
-      _trackingStatus = null;
-      _movementReminderSent = false;
-      _pendingMovementMeters = 0;
     });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            'تم إيقاف التتبع تلقائياً عند توقف السيارة. تم حساب ${distanceKm.toStringAsFixed(1)} كم.',
-            style: GoogleFonts.cairo()),
-        backgroundColor: const Color(0xFF43A047),
-      ));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+          'تم حساب ${result.distanceKm.toStringAsFixed(1)} كم — راجع الرقم وعدّله إن لزم',
+          style: GoogleFonts.cairo()),
+      backgroundColor: const Color(0xFF43A047),
+    ));
   }
 
+  // ── Tracking ─────────────────────────────────────────────────────────────
+
   Future<void> _startTracking() async {
-    final hasPermission = await _checkPermission();
-    if (!hasPermission) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('يرجى منح إذن الموقع', style: GoogleFonts.cairo()),
-          backgroundColor: Colors.red,
-        ));
-      }
-      return;
-    }
     try {
-      final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      _baseOdometer =
+          double.tryParse(_odometerController.text) ?? widget.car.currentOdometer;
+      await BackgroundTrackingService().startTracking(widget.car);
       setState(() {
-        _startPosition = position;
-        _lastPosition = position;
-        _baseOdometer = double.tryParse(_odometerController.text) ??
-            widget.car.currentOdometer;
         _isTracking = true;
-        _pendingMovementMeters = 0;
-        _trackedDistanceMeters = 0;
         _trackedDistance = 0;
-        _movementReminderSent = false;
-        _trackingStatus = 'جاري التتبع... قُد سيارتك ثم أوقف التتبع';
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('خطأ في تحديد الموقع: $e', style: GoogleFonts.cairo()),
+          content: Text('تعذر بدء التتبع: $e', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ));
       }
@@ -373,41 +114,8 @@ void _showMovementDetectedDialog() {
   }
 
   Future<void> _stopTracking() async {
-    if (_startPosition == null) return;
-    try {
-      final endPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-
-      _handleFinalPosition(endPosition);
-
-      final distanceKm = _trackedDistanceMeters / 1000;
-      final suggested = _baseOdometer + distanceKm;
-
-      setState(() {
-        _isTracking = false;
-        _trackedDistance = distanceKm;
-        _odometerController.text = suggested.toStringAsFixed(1);
-        _source = OdometerSource.gps;
-        _trackingStatus = null;
-        _movementReminderSent = false;
-        _pendingMovementMeters = 0;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'تم حساب ${distanceKm.toStringAsFixed(1)} كم — راجع الرقم وعدّله إن لزم',
-              style: GoogleFonts.cairo()),
-          backgroundColor: const Color(0xFF43A047),
-        ));
-      }
-    } catch (e) {
-      setState(() {
-        _isTracking = false;
-        _trackingStatus = null;
-        _pendingMovementMeters = 0;
-      });
-    }
+    await BackgroundTrackingService().stopTracking(widget.car.carId);
+    // النتيجة تصل عبر _onServiceTrackingCompleted
   }
 
   // ── Save ────────────────────────────────────────────────────────────────
@@ -435,7 +143,6 @@ void _showMovementDetectedDialog() {
         'odometerUpdatedAt': DateTime.now(),
       });
 
-      // فحص تنبيهات الصيانة بعد تحديث العداد
       final logs = await MaintenanceService()
           .getCarMaintenanceLogs(widget.car.carId)
           .first;
@@ -577,14 +284,12 @@ void _showMovementDetectedDialog() {
             ],
           ),
           const Divider(height: 20),
-
-          // ── Odometer field + camera icon ──
           TextFormField(
             controller: _odometerController,
-            textAlign: TextAlign.right,
             keyboardType: TextInputType.number,
+            textAlign: TextAlign.right,
             style: GoogleFonts.cairo(
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: const Color(0xFF1E88E5)),
             onChanged: (_) => setState(() => _source = OdometerSource.manual),
@@ -593,7 +298,6 @@ void _showMovementDetectedDialog() {
               hintStyle: GoogleFonts.cairo(color: Colors.grey),
               suffixText: 'كم',
               suffixStyle: GoogleFonts.cairo(color: Colors.grey, fontSize: 16),
-              // Camera icon → opens OCR screen
               prefixIcon: Tooltip(
                 message: 'قراءة العداد بالكاميرا',
                 child: IconButton(
@@ -633,7 +337,6 @@ void _showMovementDetectedDialog() {
               return null;
             },
           ),
-
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -684,108 +387,19 @@ void _showMovementDetectedDialog() {
           ),
           const SizedBox(height: 16),
 
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: Colors.blueGrey.shade50,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.blueGrey.withOpacity(0.16)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    _backgroundEnabled
-                        ? 'التتبع بالخلفية مفعل الآن. يمكنك الرجوع لتطبيقات أخرى وسيستمر الاستماع إلى حركة السيارة.'
-                        : 'التتبع بالخلفية غير مفعل بعد. اضغط الزر لتفعيل الخلفية قبل أن تبدأ القيادة.',
-                    style: GoogleFonts.cairo(
-                      color: Colors.blueGrey[800],
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: _backgroundEnabled
-                            ? const Color(0xFF43A047)
-                            : const Color(0xFFFB8C00),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        _backgroundEnabled ? Icons.check : Icons.info_outline,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    if (!_backgroundEnabled) ...[
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () async {
-                          await _initBackground();
-                          if (mounted) setState(() {});
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          'تفعيل الخلفية',
-                          style: GoogleFonts.cairo(
-                              color: const Color(0xFF1E88E5), fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Tracking status
-          if (_trackingStatus != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF43A047).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(_trackingStatus!,
-                      style: GoogleFonts.cairo(
-                          color: const Color(0xFF43A047), fontSize: 13)),
-                  const SizedBox(width: 8),
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Color(0xFF43A047)),
-                  ),
-                ],
-              ),
-            ),
+          // ─── عداد مرئي أثناء التتبع ───
+          if (_isTracking) ...[
+            _buildLiveSpeedometer(),
             const SizedBox(height: 12),
           ],
 
-          // Tracked distance result
+          // ─── نتيجة المسافة بعد الإيقاف ───
           if (_trackedDistance > 0 && !_isTracking) ...[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E88E5).withOpacity(0.08),
+                color: const Color(0xFF1E88E5).withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -806,7 +420,7 @@ void _showMovementDetectedDialog() {
             const SizedBox(height: 12),
           ],
 
-          // Start / Stop button
+          // ─── زر بدء / إيقاف ───
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -832,6 +446,133 @@ void _showMovementDetectedDialog() {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLiveSpeedometer() {
+    return ValueListenableBuilder<Map<String, LiveTrackingData>>(
+      valueListenable: BackgroundTrackingService().liveTrackingData,
+      builder: (_, liveMap, __) {
+        final live = liveMap[widget.car.carId] ?? LiveTrackingData.zero;
+        final speed = live.speedKmh;
+        final distKm = live.distanceKm;
+        final elapsed = live.elapsedSeconds;
+
+        final speedColor = speed < 60
+            ? const Color(0xFF43A047)
+            : speed < 100
+                ? Colors.orange
+                : Colors.red;
+
+        final m = (elapsed ~/ 60).toString().padLeft(2, '0');
+        final s = (elapsed % 60).toString().padLeft(2, '0');
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1A237E), Color(0xFF0D47A1)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildPulsingDot(),
+                  const SizedBox(width: 8),
+                  Text('جاري التتبع...',
+                      style: GoogleFonts.cairo(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 130,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _OdometerSpeedometerPainter(speedKmh: speed),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      child: Column(
+                        children: [
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: Text(
+                              speed.toStringAsFixed(0),
+                              key: ValueKey(speed.toStringAsFixed(0)),
+                              style: GoogleFonts.cairo(
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.bold,
+                                  color: speedColor),
+                            ),
+                          ),
+                          Text('كم/س',
+                              style: GoogleFonts.cairo(
+                                  fontSize: 12, color: Colors.white60)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _liveChip(Icons.route,
+                      '${distKm.toStringAsFixed(2)} كم', Colors.greenAccent),
+                  Container(width: 1, height: 28, color: Colors.white24),
+                  _liveChip(Icons.timer_outlined, '$m:$s',
+                      Colors.lightBlueAccent),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _liveChip(IconData icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 6),
+        Text(label,
+            style: GoogleFonts.cairo(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildPulsingDot() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.3, end: 1.0),
+      duration: const Duration(milliseconds: 700),
+      builder: (_, v, __) => Opacity(
+        opacity: v,
+        child: Container(
+          width: 9,
+          height: 9,
+          decoration: const BoxDecoration(
+              color: Color(0xFF43A047), shape: BoxShape.circle),
+        ),
+      ),
+      onEnd: () => setState(() {}),
     );
   }
 
@@ -899,4 +640,107 @@ void _showMovementDetectedDialog() {
       ),
     );
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Speedometer Painter
+// ══════════════════════════════════════════════════════════════
+class _OdometerSpeedometerPainter extends CustomPainter {
+  final double speedKmh;
+  static const double _maxSpeed = 160;
+  static const double _strokeW = 10.0;
+
+  const _OdometerSpeedometerPainter({required this.speedKmh});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height);
+    final radius = math.min(size.width / 2, size.height) * 0.86;
+
+    const startAngle = math.pi;
+    const sweepAngle = math.pi;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      Paint()
+        ..color = Colors.white.withAlpha(30)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _strokeW
+        ..strokeCap = StrokeCap.round,
+    );
+
+    void zone(double from, double to, Color color) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle + (from / _maxSpeed) * sweepAngle,
+        ((to - from) / _maxSpeed) * sweepAngle,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _strokeW
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    zone(0, 60, const Color(0xFF43A047).withAlpha(140));
+    zone(60, 100, Colors.orange.withAlpha(140));
+    zone(100, 160, Colors.red.withAlpha(140));
+
+    final clamped = speedKmh.clamp(0.0, _maxSpeed);
+    if (clamped > 0) {
+      final color = clamped < 60
+          ? const Color(0xFF43A047)
+          : clamped < 100
+              ? Colors.orange
+              : Colors.red;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        (clamped / _maxSpeed) * sweepAngle,
+        false,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _strokeW + 4
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+
+    final needleAngle = startAngle + (clamped / _maxSpeed) * sweepAngle;
+    canvas.drawLine(
+      center,
+      Offset(
+        center.dx + (radius * 0.7) * math.cos(needleAngle),
+        center.dy + (radius * 0.7) * math.sin(needleAngle),
+      ),
+      Paint()
+        ..color = Colors.white
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round,
+    );
+
+    canvas.drawCircle(center, 6, Paint()..color = Colors.white);
+    canvas.drawCircle(center, 4, Paint()..color = const Color(0xFF1E88E5));
+
+    for (final speed in [0.0, 60.0, 120.0, 160.0]) {
+      final angle = startAngle + (speed / _maxSpeed) * sweepAngle;
+      canvas.drawLine(
+        Offset(center.dx + (radius - 14) * math.cos(angle),
+            center.dy + (radius - 14) * math.sin(angle)),
+        Offset(center.dx + (radius + 4) * math.cos(angle),
+            center.dy + (radius + 4) * math.sin(angle)),
+        Paint()
+          ..color = Colors.white38
+          ..strokeWidth = 1.5,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _OdometerSpeedometerPainter old) =>
+      old.speedKmh != speedKmh;
 }

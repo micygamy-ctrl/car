@@ -75,7 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [color, color.withOpacity(0.7)],
+                    colors: [color, color.withAlpha(178)],
                   ),
                 ),
                 child: SafeArea(
@@ -88,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           width: 160,
                           height: 160,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withAlpha(51),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -112,7 +112,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           page['description'] as String,
                           style: GoogleFonts.cairo(
                             fontSize: 16,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withAlpha(230),
                             height: 1.6,
                           ),
                           textAlign: TextAlign.center,
@@ -144,12 +144,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         width: _currentPage == index ? 24 : 8,
                         height: 8,
-                       decoration: BoxDecoration(
-  color: Colors.white.withOpacity(
-    _currentPage == index ? 1.0 : 0.5,
-  ),
-  borderRadius: BorderRadius.circular(4),
-),
+                        decoration: BoxDecoration(
+                          color: _currentPage == index
+                              ? Colors.white
+                              : Colors.white.withAlpha(128),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
                     ),
                   ),

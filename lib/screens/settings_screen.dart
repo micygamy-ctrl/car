@@ -291,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withAlpha(26),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -362,7 +362,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withAlpha(15),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: isSelected ? color : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected
-              ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))]
+              ? [BoxShadow(color: color.withAlpha(76), blurRadius: 8, offset: const Offset(0, 4))]
               : [],
         ),
         child: Text(

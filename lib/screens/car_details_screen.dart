@@ -591,7 +591,7 @@ class _Surface extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE6EAF0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withAlpha(10),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -653,7 +653,7 @@ class _MetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withAlpha(20),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -746,9 +746,9 @@ class _MaintenanceAlertRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: item.color.withOpacity(0.08),
+        color: item.color.withAlpha(20),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: item.color.withOpacity(0.20)),
+        border: Border.all(color: item.color.withAlpha(51)),
       ),
       child: Row(
         children: [
@@ -863,7 +863,7 @@ class _EmptyState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withAlpha(20),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

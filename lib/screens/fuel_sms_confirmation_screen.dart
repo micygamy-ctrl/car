@@ -122,18 +122,18 @@ class _FuelSmsConfirmationScreenState
         notes: 'تم اكتشافه تلقائياً من رسالة ${widget.smsResult.bankName}',
       );
 
-      await _fuelService.addFuelLog(log);
-
-      // تحديث عداد السيارة إن لزم
-      if (odometer > _selectedCar!.currentOdometer) {
-        await _carService.updateCar(_selectedCar!.carId, {
-          'currentOdometer': odometer,
-          'odometerUpdateSource': 'manual',
-        });
-      }
+      await Future.wait([
+        _fuelService.addFuelLog(log),
+        SmsService().markSmsAsProcessed(widget.smsResult.smsId),
+        if (odometer > _selectedCar!.currentOdometer)
+          _carService.updateCar(_selectedCar!.carId, {
+            'currentOdometer': odometer,
+            'odometerUpdateSource': 'manual',
+          }),
+      ]);
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('تم تسجيل الوقود تلقائياً ✅', style: GoogleFonts.cairo()),
           backgroundColor: const Color(0xFF43A047),
@@ -191,7 +191,11 @@ class _FuelSmsConfirmationScreenState
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () async {
+                        await SmsService()
+                            .markSmsAsProcessed(widget.smsResult.smsId);
+                        if (mounted) Navigator.pop(context, false);
+                      },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: Colors.grey),
                         shape: RoundedRectangleBorder(

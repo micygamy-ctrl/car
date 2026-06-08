@@ -54,17 +54,25 @@ class CarService {
 
   Future<void> deleteCar(String carId) async {
     try {
-      final collections = ['fuelLogs', 'serviceLogs', 'carParts'];
-      for (final col in collections) {
-        final snap = await _firestore
+      const collections = ['fuelLogs', 'serviceLogs', 'carParts'];
+
+      // جلب كل المجموعات بالتوازي
+      final snaps = await Future.wait(
+        collections.map((col) => _firestore
             .collection(col)
             .where('carId', isEqualTo: carId)
-            .get();
+            .get()),
+      );
+
+      // حذف كل الوثائق في batch واحد
+      final batch = _firestore.batch();
+      for (final snap in snaps) {
         for (final doc in snap.docs) {
-          await doc.reference.delete();
+          batch.delete(doc.reference);
         }
       }
-      await _firestore.collection('cars').doc(carId).delete();
+      batch.delete(_firestore.collection('cars').doc(carId));
+      await batch.commit();
     } catch (e) {
       rethrow;
     }

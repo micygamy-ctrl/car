@@ -186,7 +186,7 @@ class _MapScreenState extends State<MapScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withAlpha(26),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -225,7 +225,7 @@ class _MapScreenState extends State<MapScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E88E5).withOpacity(0.1),
+                              color: const Color(0xFF1E88E5).withAlpha(26),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.refresh,
@@ -248,7 +248,7 @@ class _MapScreenState extends State<MapScreen> {
           // ── مؤشر التحميل ──────────────────────────────────
           if (_isLoading)
             Container(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withAlpha(51),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -289,7 +289,7 @@ class _MapScreenState extends State<MapScreen> {
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withAlpha(26),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -326,7 +326,7 @@ class _MapScreenState extends State<MapScreen> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withAlpha(20),
                       blurRadius: 8,
                     ),
                   ],
@@ -383,7 +383,7 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withAlpha(20),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -441,7 +441,7 @@ class _MapScreenState extends State<MapScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withAlpha(26),
                 shape: BoxShape.circle,
               ),
               child:
@@ -542,8 +542,8 @@ class _PlaceBottomSheet extends StatelessWidget {
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: place.isOpen
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withAlpha(26)
+                            : Colors.red.withAlpha(26),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -561,7 +561,7 @@ class _PlaceBottomSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.1),
+                        color: themeColor.withAlpha(26),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(

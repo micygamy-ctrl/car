@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/car_model.dart';
+import '../models/car_part_model.dart';
 import '../models/maintenance_log_model.dart';
 import 'notification_service.dart';
 
@@ -44,9 +45,10 @@ class ReminderService {
 
   Future<void> _checkCar(CarModel car) async {
     final carName = '${car.make} ${car.model}';
+    final notif = NotificationService();
 
     // 1. فحص تغيير الزيت
-    await NotificationService().checkOilChangeReminder(
+    await notif.checkOilChangeReminder(
       carId: car.carId,
       carName: carName,
       currentOdometer: car.currentOdometer,
@@ -54,30 +56,51 @@ class ReminderService {
       oilChangeInterval: car.oilChangeInterval,
     );
 
-    // 2. جلب سجلات الخدمات وفحصها
+    // 2. جلب سجلات الخدمات وقطع السيارة بالتوازي
     try {
-      final logsSnapshot = await _firestore
-          .collection('serviceLogs')
-          .where('carId', isEqualTo: car.carId)
-          .get();
+      final results = await Future.wait([
+        _firestore
+            .collection('serviceLogs')
+            .where('carId', isEqualTo: car.carId)
+            .get(),
+        _firestore
+            .collection('carParts')
+            .where('carId', isEqualTo: car.carId)
+            .where('enabled', isEqualTo: true)
+            .get(),
+      ]);
 
-      final logs = logsSnapshot.docs
+      final logs = results[0]
+          .docs
           .map((doc) => ServiceLogModel.fromMap(doc.data()))
           .toList();
 
-      // 3. فحص التواريخ
-      await NotificationService().checkExpiryReminders(
+      final parts = results[1]
+          .docs
+          .map((doc) => CarPartModel.fromMap(doc.data()))
+          .toList();
+
+      // 3. فحص التواريخ (سجلات الخدمات)
+      await notif.checkExpiryReminders(
         carId: car.carId,
         carName: carName,
         logs: logs,
       );
 
-      // 4. فحص الكيلومترات
-      await NotificationService().checkOdometerReminders(
+      // 4. فحص الكيلومترات (سجلات الخدمات)
+      await notif.checkOdometerReminders(
         carId: car.carId,
         carName: carName,
         currentOdometer: car.currentOdometer,
         logs: logs,
+      );
+
+      // 5. فحص قطع السيارة (carParts collection)
+      await notif.checkCarPartsReminders(
+        carId: car.carId,
+        carName: carName,
+        currentOdometer: car.currentOdometer,
+        parts: parts,
       );
     } catch (e) {
       // تجاهل

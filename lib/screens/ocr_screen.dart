@@ -114,7 +114,7 @@ class _OcrScreenState extends State<OcrScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E88E5).withOpacity(0.1),
+                color: const Color(0xFF1E88E5).withAlpha(26),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -176,7 +176,7 @@ class _OcrScreenState extends State<OcrScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withAlpha(26),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -231,7 +231,7 @@ class _OcrScreenState extends State<OcrScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.green.withOpacity(0.2),
+                        color: Colors.green.withAlpha(51),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -397,7 +397,7 @@ class _OcrScreenState extends State<OcrScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.2),
+              color: color.withAlpha(51),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -409,7 +409,7 @@ class _OcrScreenState extends State<OcrScreen> {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withAlpha(26),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 28),

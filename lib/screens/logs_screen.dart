@@ -184,7 +184,7 @@ class _LogsScreenState extends State<LogsScreen>
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isSelected ? color : color.withOpacity(0.1),
+                        color: isSelected ? color : color.withAlpha(26),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -301,7 +301,7 @@ class _LogsScreenState extends State<LogsScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha(15),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -322,7 +322,7 @@ class _LogsScreenState extends State<LogsScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withAlpha(26),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -343,7 +343,7 @@ class _LogsScreenState extends State<LogsScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
+                          color: color.withAlpha(26),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -393,8 +393,8 @@ class _LogsScreenState extends State<LogsScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: daysLeft != null && daysLeft <= 30
-                        ? Colors.red.withOpacity(0.1)
-                        : Colors.green.withOpacity(0.1),
+                        ? Colors.red.withAlpha(26)
+                        : Colors.green.withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -433,7 +433,7 @@ class _LogsScreenState extends State<LogsScreen>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -526,7 +526,7 @@ class _LogsScreenState extends State<LogsScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withAlpha(15),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -544,7 +544,7 @@ class _LogsScreenState extends State<LogsScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFB8C00).withOpacity(0.1),
+                      color: const Color(0xFFFB8C00).withAlpha(26),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -636,7 +636,7 @@ class _LogsScreenState extends State<LogsScreen>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withAlpha(26),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 40, color: color),

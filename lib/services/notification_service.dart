@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import '../models/maintenance_log_model.dart';
+import '../models/car_part_model.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -169,11 +170,45 @@ class NotificationService {
     }
   }
   Future<void> checkCarPartsReminders({
-  required String carId,
-  required String carName,
-  required double currentOdometer,
-}) async {
-  // بتستخدم checkOdometerReminders اللي موجودة بالفعل
-  // مش محتاج حاجة تانية
-}
+    required String carId,
+    required String carName,
+    required double currentOdometer,
+    required List<CarPartModel> parts,
+  }) async {
+    final baseId = _carBaseId(carId) + 300;
+    int offset = 0;
+
+    for (final part in parts) {
+      final status = part.status(currentOdometer);
+      if (status == PartStatus.overdue) {
+        final kmLeft = part.kmRemaining(currentOdometer);
+        final daysLeft = part.daysRemaining();
+        String detail = '';
+        if (kmLeft != null) {
+          detail = 'تجاوز الموعد بـ ${kmLeft.abs().toStringAsFixed(0)} كم';
+        } else if (daysLeft != null) {
+          detail = 'تجاوز الموعد بـ ${daysLeft.abs()} يوم';
+        }
+        await showNotification(
+          id: baseId + offset++,
+          title: '🔴 حان موعد صيانة!',
+          body: '$carName — ${part.name}، $detail',
+        );
+      } else if (status == PartStatus.dueSoon) {
+        final kmLeft = part.kmRemaining(currentOdometer);
+        final daysLeft = part.daysRemaining();
+        String detail = '';
+        if (kmLeft != null) {
+          detail = 'باقي ${kmLeft.toStringAsFixed(0)} كم';
+        } else if (daysLeft != null) {
+          detail = 'باقي $daysLeft يوم';
+        }
+        await showNotification(
+          id: baseId + offset++,
+          title: '⚠️ صيانة قريبة',
+          body: '$carName — ${part.name}، $detail',
+        );
+      }
+    }
+  }
 }

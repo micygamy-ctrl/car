@@ -7,46 +7,94 @@ import 'package:flutter_background/flutter_background.dart' as fb;
 
 import '../models/car_model.dart';
 
+// ─── نتيجة التتبع ───
 class TrackingResult {
   final double distanceKm;
   final double suggestedOdometer;
-
   TrackingResult({required this.distanceKm, required this.suggestedOdometer});
 }
 
-class _TrackingSession {
-  final CarModel car;
-  Position? startPosition;
-  Position? lastPosition;
-  double totalDistanceMeters = 0;
-  int stationaryCount = 0;
-  StreamSubscription<Position>? subscription;
-
-  _TrackingSession(this.car);
+// ─── بيانات التتبع المباشر (للعداد المرئي) ───
+class LiveTrackingData {
+  final double speedKmh;
+  final double distanceKm;
+  final int elapsedSeconds;
+  const LiveTrackingData({
+    required this.speedKmh,
+    required this.distanceKm,
+    required this.elapsedSeconds,
+  });
+  static const zero = LiveTrackingData(speedKmh: 0, distanceKm: 0, elapsedSeconds: 0);
 }
 
+// ─── جلسة التتبع الداخلية ───
+class _TrackingSession {
+  final CarModel car;
+  final DateTime startTime;
+  Position? lastPosition;
+  double totalDistanceMeters = 0;
+  Timer? stationaryTimer;
+  StreamSubscription<Position>? subscription;
+
+  _TrackingSession(this.car) : startTime = DateTime.now();
+
+  void cancelStationaryTimer() {
+    stationaryTimer?.cancel();
+    stationaryTimer = null;
+  }
+}
+
+/// خدمة تتبع السيارة — Singleton
+/// Passive Monitor: subscription مشترك واحد لكل السيارات (توفير بطارية)
+/// Full Tracking: يوقف تلقائيًا بعد 5 دقائق وقوف ويُبلغ الـ UI
 class BackgroundTrackingService {
   BackgroundTrackingService._private();
   static final BackgroundTrackingService _instance =
       BackgroundTrackingService._private();
   factory BackgroundTrackingService() => _instance;
 
+  // ─── Full tracking ───
   final ValueNotifier<bool> backgroundEnabled = ValueNotifier<bool>(false);
   final ValueNotifier<Set<String>> activeTrackings =
       ValueNotifier<Set<String>>(<String>{});
-
   final Map<String, _TrackingSession> _sessions = {};
+
+  /// يُطلق عند انتهاء التتبع (يدوي أو تلقائي) ليعرض الـ UI النتيجة
+  final ValueNotifier<MapEntry<String, TrackingResult>?> trackingCompleted =
+      ValueNotifier(null);
+
+  /// بيانات مباشرة للعداد المرئي (تتحدث مع كل قراءة GPS)
+  final ValueNotifier<Map<String, LiveTrackingData>> liveTrackingData =
+      ValueNotifier(<String, LiveTrackingData>{});
+
+  /// السيارات التي تملك شاشة تحديث عداد مفتوحة حالياً
+  /// (تمنع الهوم سكرين من عرض dialog مكرر)
+  final Set<String> odometerScreenOpenCars = {};
+
+  // ─── Passive monitor — ONE shared subscription ───
+  final ValueNotifier<String?> movementDetectedForCar =
+      ValueNotifier<String?>(null);
+
+  StreamSubscription<Position>? _sharedPassiveSub;
+  final Map<String, CarModel> _monitoredCars = {};
+  final Map<String, int> _movementCounts = {};
+
+  // ─── Constants ───
   static const double _minMovementMeters = 10;
   static const double _maxAcceptedAccuracyMeters = 50;
   static const double _maxReasonableSegmentMeters = 1000;
-  static const double _stationarySpeedMetersPerSecond = 1.5;
+  static const double _stationarySpeedMs = 1.5;
+  static const double _movementDetectionSpeedMs = 2.8;
+  static const int _movementConfirmationCount = 2;
+  static const Duration _stationaryTimeout = Duration(minutes: 5);
 
-  LocationSettings get _gpsLocationSettings {
+  // ─────────────────────────────────────
+  //  Location settings
+  // ─────────────────────────────────────
+  LocationSettings get _fullLocationSettings {
     if (kIsWeb) {
       return const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
-      );
+          accuracy: LocationAccuracy.high, distanceFilter: 5);
     }
     return AndroidSettings(
       accuracy: LocationAccuracy.high,
@@ -62,9 +110,22 @@ class BackgroundTrackingService {
     );
   }
 
-  Future<void> init() async {
-    // No-op for now; keep for future initialization
+  LocationSettings get _passiveLocationSettings {
+    if (kIsWeb) {
+      return const LocationSettings(
+          accuracy: LocationAccuracy.medium, distanceFilter: 20);
+    }
+    return AndroidSettings(
+      accuracy: LocationAccuracy.medium,
+      distanceFilter: 20,
+      intervalDuration: const Duration(seconds: 5),
+    );
   }
+
+  // ─────────────────────────────────────
+  //  Permissions & background
+  // ─────────────────────────────────────
+  Future<void> init() async {}
 
   Future<bool> _checkPermission() async {
     if (kIsWeb) {
@@ -95,7 +156,6 @@ class BackgroundTrackingService {
       notificationIcon:
           fb.AndroidResource(name: 'ic_launcher', defType: 'mipmap'),
     );
-
     final initialized =
         await fb.FlutterBackground.initialize(androidConfig: androidConfig);
     if (initialized) {
@@ -104,14 +164,88 @@ class BackgroundTrackingService {
     }
   }
 
+  // ─────────────────────────────────────
+  //  Passive monitor — shared GPS stream
+  // ─────────────────────────────────────
+
+  Future<void> startPassiveMonitor(CarModel car) async {
+    if (isTrackingForCar(car.carId)) return;
+    if (_monitoredCars.containsKey(car.carId)) return;
+
+    final hasPermission = await _checkPermission();
+    if (!hasPermission) return;
+
+    _monitoredCars[car.carId] = car;
+    _movementCounts[car.carId] = 0;
+
+    _sharedPassiveSub ??= Geolocator.getPositionStream(
+      locationSettings: _passiveLocationSettings,
+    ).listen(_onPassivePosition, onError: (_) {});
+  }
+
+  void _onPassivePosition(Position pos) {
+    if (_monitoredCars.isEmpty) {
+      _stopSharedPassiveSub();
+      return;
+    }
+
+    if (pos.accuracy > _maxAcceptedAccuracyMeters) return;
+    final speed = pos.speed >= 0 ? pos.speed : 0.0;
+    final isMoving = speed >= _movementDetectionSpeedMs;
+
+    for (final carId in List<String>.from(_monitoredCars.keys)) {
+      if (isTrackingForCar(carId)) {
+        _monitoredCars.remove(carId);
+        _movementCounts.remove(carId);
+        continue;
+      }
+
+      if (isMoving) {
+        _movementCounts[carId] = (_movementCounts[carId] ?? 0) + 1;
+        if ((_movementCounts[carId] ?? 0) >= _movementConfirmationCount) {
+          _monitoredCars.remove(carId);
+          _movementCounts.remove(carId);
+          movementDetectedForCar.value = carId;
+          break;
+        }
+      } else {
+        _movementCounts[carId] = 0;
+      }
+    }
+
+    if (_monitoredCars.isEmpty) _stopSharedPassiveSub();
+  }
+
+  void _stopSharedPassiveSub() {
+    _sharedPassiveSub?.cancel();
+    _sharedPassiveSub = null;
+  }
+
+  void stopPassiveMonitor(String carId) {
+    _monitoredCars.remove(carId);
+    _movementCounts.remove(carId);
+    if (_monitoredCars.isEmpty) _stopSharedPassiveSub();
+  }
+
+  void stopAllPassiveMonitors() {
+    _monitoredCars.clear();
+    _movementCounts.clear();
+    _stopSharedPassiveSub();
+  }
+
+  bool isPassiveMonitoring(String carId) => _monitoredCars.containsKey(carId);
+
+  // ─────────────────────────────────────
+  //  Full tracking session
+  // ─────────────────────────────────────
   bool isTrackingForCar(String carId) => _sessions.containsKey(carId);
 
   Future<void> startTracking(CarModel car) async {
     final hasPermission = await _checkPermission();
     if (!hasPermission) throw Exception('Location permission denied');
 
+    stopPassiveMonitor(car.carId);
     await _ensureBackground();
-
     if (isTrackingForCar(car.carId)) return;
 
     final session = _TrackingSession(car);
@@ -119,15 +253,12 @@ class BackgroundTrackingService {
     try {
       final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
-      session.startPosition = position;
       session.lastPosition = position;
 
       session.subscription = Geolocator.getPositionStream(
-        locationSettings: _gpsLocationSettings,
+        locationSettings: _fullLocationSettings,
       ).listen((pos) {
-        if (session.startPosition == null) session.startPosition = pos;
         if (session.lastPosition == null) session.lastPosition = pos;
-
         if (pos.accuracy > _maxAcceptedAccuracyMeters) return;
 
         final movedDistance = Geolocator.distanceBetween(
@@ -142,24 +273,34 @@ class BackgroundTrackingService {
           return;
         }
 
-        final hasSpeed = pos.speed >= 0;
+        final speed = pos.speed >= 0 ? pos.speed : 0.0;
         final isStationary =
-            (hasSpeed && pos.speed < _stationarySpeedMetersPerSecond) ||
-                movedDistance < _minMovementMeters;
+            speed < _stationarySpeedMs || movedDistance < _minMovementMeters;
+
         if (isStationary) {
-          session.stationaryCount += 1;
+          // ابدأ عداد الوقوف (5 دقائق) لو مش شغال
+          session.stationaryTimer ??= Timer(_stationaryTimeout, () {
+            stopTracking(car.carId);
+          });
         } else {
-          session.stationaryCount = 0;
+          // تحرك مؤكد — ألغِ عداد الوقوف وسجّل المسافة
+          session.cancelStationaryTimer();
           session.totalDistanceMeters += movedDistance;
           session.lastPosition = pos;
         }
 
-        if (session.stationaryCount >= 3) {
-          stopTracking(car.carId);
-        }
-      }, onError: (_) {
-        // ignore
-      });
+        // حدّث بيانات العداد المرئي
+        final elapsed =
+            DateTime.now().difference(session.startTime).inSeconds;
+        final updated =
+            Map<String, LiveTrackingData>.from(liveTrackingData.value);
+        updated[car.carId] = LiveTrackingData(
+          speedKmh: speed * 3.6,
+          distanceKm: session.totalDistanceMeters / 1000,
+          elapsedSeconds: elapsed,
+        );
+        liveTrackingData.value = updated;
+      }, onError: (_) {});
 
       _sessions[car.carId] = session;
       activeTrackings.value = {...activeTrackings.value, car.carId};
@@ -168,23 +309,33 @@ class BackgroundTrackingService {
     }
   }
 
+  /// يوقف التتبع ويُبلغ الـ UI بالنتيجة عبر [trackingCompleted].
+  /// يُعيد النتيجة أيضًا للمتصل المباشر.
   Future<TrackingResult?> stopTracking(String carId) async {
     final session = _sessions.remove(carId);
     if (session == null) return null;
 
+    session.cancelStationaryTimer();
     await session.subscription?.cancel();
 
-    if (session.startPosition == null || session.lastPosition == null) {
-      activeTrackings.value = {...activeTrackings.value}..remove(carId);
-      return TrackingResult(
-          distanceKm: 0, suggestedOdometer: session.car.currentOdometer);
-    }
+    // أزل من البيانات المباشرة
+    final updatedLive =
+        Map<String, LiveTrackingData>.from(liveTrackingData.value)
+          ..remove(carId);
+    liveTrackingData.value = updatedLive;
+
+    final updated = {...activeTrackings.value}..remove(carId);
+    activeTrackings.value = updated;
 
     final distanceKm = session.totalDistanceMeters / 1000;
-    final suggested = session.car.currentOdometer + distanceKm;
+    final result = TrackingResult(
+      distanceKm: distanceKm,
+      suggestedOdometer: session.car.currentOdometer + distanceKm,
+    );
 
-    activeTrackings.value = {...activeTrackings.value}..remove(carId);
+    // أخبر الـ UI بالنتيجة (يدوي أو تلقائي)
+    trackingCompleted.value = MapEntry(carId, result);
 
-    return TrackingResult(distanceKm: distanceKm, suggestedOdometer: suggested);
+    return result;
   }
 }

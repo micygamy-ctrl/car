@@ -324,44 +324,44 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             : _violationLocationController.text.trim(),
       );
 
-      await _maintenanceService.addServiceLog(log);
-      await _maintenanceItemService.upsertFromServiceLog(
-        log: log,
-        intervalKm: intervalKm,
-        intervalDays: intervalDays,
-      );
-
-      // تحديث نظام القطع الذكي
-      if (log.category == 'maintenance') {
-  final odometerForPart = odometer ?? widget.car.currentOdometer;
-  await _carPartService.upsertFromServiceTitle(
-    carId: widget.car.carId,
-    serviceTitle: log.title,
-    currentOdometer: odometerForPart,
-    intervalKm: intervalKm,
-    intervalDays: intervalDays,
-    nextDueOdometer: nextDueOdometer,
-    nextDueDate: expiryDate,
-  );
-}
-
+      // بناء تحديث بيانات السيارة في خطوة واحدة
+      final carUpdate = <String, dynamic>{};
       if (_updateCarOdometer &&
           odometer != null &&
           odometer > widget.car.currentOdometer) {
-        await _carService.updateCar(widget.car.carId, {
-          'currentOdometer': odometer,
-          'odometerUpdateSource': 'service',
-          'odometerUpdatedAt': DateTime.now(),
-        });
+        carUpdate['currentOdometer'] = odometer;
+        carUpdate['odometerUpdateSource'] = 'service';
+        carUpdate['odometerUpdatedAt'] = DateTime.now();
       }
-
       if (_selectedCategory == 'maintenance' &&
           _titleController.text.trim().contains('زيت') &&
           odometer != null) {
-        await _carService.updateCar(widget.car.carId, {
-          'lastOilChangeOdometer': odometer,
-        });
+        carUpdate['lastOilChangeOdometer'] = odometer;
       }
+
+      final odometerForPart = odometer ?? widget.car.currentOdometer;
+
+      // تشغيل كل العمليات بالتوازي
+      await Future.wait([
+        _maintenanceService.addServiceLog(log),
+        _maintenanceItemService.upsertFromServiceLog(
+          log: log,
+          intervalKm: intervalKm,
+          intervalDays: intervalDays,
+        ),
+        if (log.category == 'maintenance')
+          _carPartService.upsertFromServiceTitle(
+            carId: widget.car.carId,
+            serviceTitle: log.title,
+            currentOdometer: odometerForPart,
+            intervalKm: intervalKm,
+            intervalDays: intervalDays,
+            nextDueOdometer: nextDueOdometer,
+            nextDueDate: expiryDate,
+          ),
+        if (carUpdate.isNotEmpty)
+          _carService.updateCar(widget.car.carId, carUpdate),
+      ]);
 
       if (mounted) {
         Navigator.pop(context);
@@ -407,7 +407,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [categoryColor, categoryColor.withOpacity(0.7)],
+                    colors: [categoryColor, categoryColor.withAlpha(178)],
                   ),
                 ),
                 child: SafeArea(
@@ -461,7 +461,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withAlpha(15),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),
@@ -510,12 +510,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? color
-                                        : color.withOpacity(0.1),
+                                        : color.withAlpha(26),
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: isSelected
                                         ? [
                                             BoxShadow(
-                                              color: color.withOpacity(0.4),
+                                              color: color.withAlpha(102),
                                               blurRadius: 8,
                                               offset: const Offset(0, 4),
                                             )
@@ -826,10 +826,10 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: selected ? color : color.withOpacity(0.08),
+                  color: selected ? color : color.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: selected ? color : color.withOpacity(0.14),
+                    color: selected ? color : color.withAlpha(36),
                   ),
                 ),
                 child: Row(
@@ -989,7 +989,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: _expiryDate != null
-              ? color.withOpacity(0.1)
+              ? color.withAlpha(26)
               : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -1063,7 +1063,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withAlpha(15),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
