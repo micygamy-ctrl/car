@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/car_service.dart';
 import '../models/car_model.dart';
 import 'add_car_screen.dart';
+import 'join_car_screen.dart';
 import 'odometer_update_screen.dart';
 import '../services/background_tracking_service.dart';
 import 'car_details_screen.dart';
@@ -167,8 +168,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             centerTitle: true,
           ),
-          StreamBuilder<List<CarModel>>(
-            stream: carService.getUserCars(user?.uid ?? ''),
+          StreamBuilder<List<CarWithRole>>(
+            stream: carService.getUserCarsWithRole(user?.uid ?? ''),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SliverFillRemaining(
@@ -226,8 +227,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final car = cars[index];
-                      return _CarCard(car: car, bgService: _bgService);
+                      final carWithRole = cars[index];
+                      return _CarCard(
+                        car: carWithRole.car,
+                        bgService: _bgService,
+                        role: carWithRole.role,
+                      );
                     },
                     childCount: cars.length,
                   ),
@@ -237,17 +242,85 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddCarScreen()),
-          );
-        },
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddOptions(context),
         backgroundColor: const Color(0xFF1E88E5),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text('إضافة سيارة',
-            style: GoogleFonts.cairo(color: Colors.white)),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withAlpha(80),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E88E5).withAlpha(20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child:
+                      const Icon(Icons.add, color: Color(0xFF1E88E5)),
+                ),
+                title: Text('إضافة سيارة جديدة',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                subtitle: Text('أضف سيارتك الخاصة',
+                    style:
+                        GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const AddCarScreen()));
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF43A047).withAlpha(20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.vpn_key,
+                      color: Color(0xFF43A047)),
+                ),
+                title: Text('انضم لسيارة',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                subtitle: Text('ادخل كود الدعوة من المالك',
+                    style:
+                        GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const JoinCarScreen()));
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -259,8 +332,9 @@ class _HomeScreenState extends State<HomeScreen> {
 class _CarCard extends StatefulWidget {
   final CarModel car;
   final BackgroundTrackingService bgService;
+  final String role;
 
-  const _CarCard({required this.car, required this.bgService});
+  const _CarCard({required this.car, required this.bgService, required this.role});
 
   @override
   State<_CarCard> createState() => _CarCardState();
@@ -579,7 +653,10 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (context) => CarDashboardScreen(car: car)),
+            builder: (context) => CarDashboardScreen(
+                  car: car,
+                  isAdmin: widget.role == 'admin',
+                )),
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -606,20 +683,49 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(51),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      car.licensePlate,
-                      style: GoogleFonts.cairo(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(51),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          car.licensePlate,
+                          style: GoogleFonts.cairo(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (widget.role == 'driver') ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF43A047).withAlpha(200),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.person,
+                                  color: Colors.white, size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                'سواق',
+                                style: GoogleFonts.cairo(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,

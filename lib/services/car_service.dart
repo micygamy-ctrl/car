@@ -1,6 +1,13 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import '../models/car_model.dart';
+
+class CarWithRole {
+  final CarModel car;
+  final String role; // 'admin' or 'driver'
+  const CarWithRole({required this.car, required this.role});
+}
 
 class CarService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -22,6 +29,67 @@ class CarService {
         .map((snapshot) => snapshot.docs
             .map((doc) => CarModel.fromMap(doc.data()))
             .toList());
+  }
+
+  /// Stream يجمع السيارات المملوكة + السيارات اللي المستخدم سواق فيها
+  Stream<List<CarWithRole>> getUserCarsWithRole(String userId) {
+    late StreamSubscription ownedSub;
+    late StreamSubscription memberSub;
+
+    List<CarWithRole> ownedCars = [];
+    List<CarWithRole> memberCars = [];
+
+    final controller = StreamController<List<CarWithRole>>();
+
+    void emit() {
+      if (!controller.isClosed) {
+        controller.add([...ownedCars, ...memberCars]);
+      }
+    }
+
+    ownedSub = _firestore
+        .collection('cars')
+        .where('ownerId', isEqualTo: userId)
+        .snapshots()
+        .listen((snap) {
+      ownedCars = snap.docs
+          .map((d) => CarWithRole(car: CarModel.fromMap(d.data()), role: 'admin'))
+          .toList();
+      emit();
+    });
+
+    memberSub = _firestore
+        .collection('carMembers')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .asyncMap((snap) async {
+          final List<CarWithRole> result = [];
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final carId = data['carId'] as String;
+            final carDoc =
+                await _firestore.collection('cars').doc(carId).get();
+            if (carDoc.exists) {
+              result.add(CarWithRole(
+                car: CarModel.fromMap(carDoc.data()!),
+                role: data['role'] as String? ?? 'driver',
+              ));
+            }
+          }
+          return result;
+        })
+        .listen((result) {
+          memberCars = result;
+          emit();
+        });
+
+    controller.onCancel = () {
+      ownedSub.cancel();
+      memberSub.cancel();
+      controller.close();
+    };
+
+    return controller.stream;
   }
 
   Stream<CarModel?> getCarStream(String carId) {

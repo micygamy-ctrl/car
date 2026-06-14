@@ -17,11 +17,15 @@ import 'logs_screen.dart';
 import 'reports_screen.dart';
 import 'edit_car_screen.dart';
 import 'odometer_update_screen.dart';
+import 'manage_drivers_screen.dart';
+import 'active_trip_screen.dart';
+import 'trips_history_screen.dart';
 
 class CarDashboardScreen extends StatefulWidget {
   final CarModel car;
+  final bool isAdmin;
 
-  const CarDashboardScreen({super.key, required this.car});
+  const CarDashboardScreen({super.key, required this.car, this.isAdmin = true});
 
   @override
   State<CarDashboardScreen> createState() => _CarDashboardScreenState();
@@ -131,19 +135,32 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                 backgroundColor: const Color(0xFF1E88E5),
                 iconTheme: const IconThemeData(color: Colors.white),
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => EditCarScreen(car: _car)),
+                  if (widget.isAdmin) ...[
+                    IconButton(
+                      icon: const Icon(Icons.people, color: Colors.white),
+                      tooltip: 'إدارة السواقين',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                ManageDriversScreen(car: _car)),
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.white),
-                    tooltip: 'حذف السيارة',
-                    onPressed: () => _confirmDelete(context),
-                  ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => EditCarScreen(car: _car)),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          color: Colors.white),
+                      tooltip: 'حذف السيارة',
+                      onPressed: () => _confirmDelete(context),
+                    ),
+                  ],
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: _buildHeader(healthScore, overdueCount,
@@ -208,6 +225,73 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                     builder: (_) =>
                                         ReportsScreen(car: _car)));
                           }),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // ═══════════════════════ زرار الرحلات ═══════════════════════
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: GestureDetector(
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        ActiveTripScreen(car: _car)),
+                              ),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF43A047),
+                                      Color(0xFF2E7D32)
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF43A047)
+                                          .withAlpha(80),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.play_arrow,
+                                        color: Colors.white, size: 22),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'ابدأ رحلة',
+                                      style: GoogleFonts.cairo(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _quickBtn(
+                                context, Icons.history_edu, 'الرحلات',
+                                const Color(0xFF00ACC1), () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          TripsHistoryScreen(car: _car)));
+                            }),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
