@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 import '../models/car_model.dart';
-import '../models/trip_model.dart';
 import '../services/auth_service.dart';
 import '../services/background_tracking_service.dart';
-import '../services/car_service.dart';
 import '../services/trip_service.dart';
 
 class ActiveTripScreen extends StatefulWidget {
@@ -18,11 +16,9 @@ class ActiveTripScreen extends StatefulWidget {
 
 class _ActiveTripScreenState extends State<ActiveTripScreen> {
   final _bgService = BackgroundTrackingService();
-  final _carService = CarService();
   final _tripService = TripService();
 
   late final DateTime _startTime;
-  late final double _startOdometer;
 
   bool _isStarted = false;
   bool _isEnding = false;
@@ -35,7 +31,6 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
   void initState() {
     super.initState();
     _startTime = DateTime.now();
-    _startOdometer = widget.car.currentOdometer;
 
     // منع الهوم سكرين من التقاط نتيجة التتبع
     _bgService.odometerScreenOpenCars.add(widget.car.carId);
@@ -106,28 +101,19 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     final user = AuthService().currentUser;
     final tripId = const Uuid().v4();
     final endTime = DateTime.now();
-    final endOdometer = _startOdometer + result.distanceKm;
 
     try {
-      await Future.wait([
-        _tripService.saveTrip(TripModel(
-          tripId: tripId,
-          carId: widget.car.carId,
-          driverId: user?.uid ?? '',
-          driverName: user?.displayName ?? user?.email ?? '',
-          startOdometer: _startOdometer,
-          endOdometer: endOdometer,
-          distanceKm: result.distanceKm,
-          startTime: _startTime,
-          endTime: endTime,
-          status: 'completed',
-        )),
-        _carService.updateCar(widget.car.carId, {
-          'currentOdometer': endOdometer,
-        }),
-      ]);
+      final (_, newOdometer) = await _tripService.saveCompletedTrip(
+        tripId: tripId,
+        carId: widget.car.carId,
+        driverId: user?.uid ?? '',
+        driverName: user?.displayName ?? user?.email ?? '',
+        distanceKm: result.distanceKm,
+        startTime: _startTime,
+        endTime: endTime,
+      );
 
-      if (mounted) _showTripSummary(result, endTime);
+      if (mounted) _showTripSummary(result, endTime, newOdometer);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -140,7 +126,7 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     }
   }
 
-  void _showTripSummary(TrackingResult result, DateTime endTime) {
+  void _showTripSummary(TrackingResult result, DateTime endTime, double newOdometer) {
     final duration = endTime.difference(_startTime);
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
@@ -175,7 +161,7 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
                   const Color(0xFF43A047)),
               const SizedBox(height: 12),
               _summaryRow(Icons.speed, 'العداد الجديد',
-                  '${(_startOdometer + result.distanceKm).toStringAsFixed(1)} كم',
+                  '${newOdometer.toStringAsFixed(1)} كم',
                   const Color(0xFF8E24AA)),
             ],
           ),

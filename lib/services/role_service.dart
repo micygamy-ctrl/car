@@ -81,9 +81,11 @@ class RoleService {
 
     final carId = data['carId'] as String;
 
-    final carDoc = await _firestore.collection('cars').doc(carId).get();
-    if (!carDoc.exists) throw Exception('السيارة غير موجودة');
-    if (carDoc.data()?['ownerId'] == user.uid) {
+    // ملحوظة: متعمدين عدم قراءة وثيقة cars هنا — قواعد الأمان الجديدة
+    // (firestore.rules) ما بتسمحش لمستخدم غير مرتبط بالسيارة بقراءتها.
+    // التحقق من إن المستخدم هو نفسه مالك السيارة بيتم عبر createdBy
+    // المُخزّن وقت إنشاء كود الدعوة.
+    if (data['createdBy'] == user.uid) {
       throw Exception('أنت بالفعل مالك هذه السيارة');
     }
 

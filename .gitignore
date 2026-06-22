@@ -39,6 +39,13 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Secrets / API Keys - لا يجب أبدًا رفع هذه الملفات على GitHub
+android/key.properties
+android/local.properties
+**/secrets.properties
+*.keystore
+*.jks
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

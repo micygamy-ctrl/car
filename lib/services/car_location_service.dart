@@ -1,26 +1,29 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// خدمة "أين عربيتي؟" - بتحفظ آخر موقع وقفت فيه العربية في Firestore
+/// (على وثيقة السيارة نفسها) عشان أي سواق أو المالك يقدر يشوفه من أي جهاز.
 class CarLocationService {
-  static const String _latKey = 'car_lat';
-  static const String _lngKey = 'car_lng';
-  static const String _timeKey = 'car_time';
+  static final _firestore = FirebaseFirestore.instance;
 
-  // حفظ مكان العربية الحالي
-  static Future<bool> saveCarLocation() async {
+  /// حفظ الموقع الحالي كمكان وقوف العربية
+  static Future<bool> saveCarLocation(String carId) async {
     try {
-      bool hasPermission = await _checkPermission();
+      final hasPermission = await _checkPermission();
       if (!hasPermission) return false;
 
-      Position position = await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble(_latKey, position.latitude);
-      await prefs.setDouble(_lngKey, position.longitude);
-      await prefs.setString(_timeKey, DateTime.now().toString());
+      await _firestore.collection('cars').doc(carId).update({
+        'parkedLocation': {
+          'lat': position.latitude,
+          'lng': position.longitude,
+          'savedAt': Timestamp.now(),
+        },
+      });
 
       return true;
     } catch (e) {
@@ -28,30 +31,35 @@ class CarLocationService {
     }
   }
 
-  // فتح Google Maps على مكان العربية
-  static Future<void> openCarInMaps() async {
-    final prefs = await SharedPreferences.getInstance();
-    final double? lat = prefs.getDouble(_latKey);
-    final double? lng = prefs.getDouble(_lngKey);
+  /// جلب بيانات آخر موقع محفوظ للعربية
+  static Future<Map<String, dynamic>?> getSavedLocation(String carId) async {
+    final doc = await _firestore.collection('cars').doc(carId).get();
+    final data = doc.data();
+    final loc = data?['parkedLocation'] as Map<String, dynamic>?;
+    if (loc == null || loc['lat'] == null || loc['lng'] == null) return null;
 
-    if (lat == null || lng == null) return;
+    final savedAt = loc['savedAt'];
+    DateTime? time;
+    if (savedAt is Timestamp) time = savedAt.toDate();
+
+    return {
+      'lat': (loc['lat'] as num).toDouble(),
+      'lng': (loc['lng'] as num).toDouble(),
+      'time': time,
+    };
+  }
+
+  /// فتح Google Maps على مكان العربية المحفوظ
+  static Future<void> openCarInMaps(String carId) async {
+    final loc = await getSavedLocation(carId);
+    if (loc == null) return;
 
     final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$lat,$lng'
+      'https://www.google.com/maps/search/?api=1&query=${loc['lat']},${loc['lng']}',
     );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-
-  // جلب بيانات آخر موقع محفوظ
-  static Future<Map<String, dynamic>?> getSavedLocation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final double? lat = prefs.getDouble(_latKey);
-    final double? lng = prefs.getDouble(_lngKey);
-    final String? time = prefs.getString(_timeKey);
-    if (lat == null) return null;
-    return {'lat': lat, 'lng': lng, 'time': time};
   }
 
   static Future<bool> _checkPermission() async {
@@ -60,6 +68,6 @@ class CarLocationService {
       permission = await Geolocator.requestPermission();
     }
     return permission != LocationPermission.denied &&
-           permission != LocationPermission.deniedForever;
+        permission != LocationPermission.deniedForever;
   }
 }

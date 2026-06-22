@@ -5,11 +5,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../services/car_service.dart';
 import '../models/car_model.dart';
+import 'login_screen.dart';
 import 'add_car_screen.dart';
 import 'join_car_screen.dart';
 import 'odometer_update_screen.dart';
+import 'active_trip_screen.dart';
 import '../services/background_tracking_service.dart';
-import 'car_details_screen.dart';
 import 'settings_screen.dart';
 import 'car_dashboard_screen.dart';
 import 'car_location_screen.dart';
@@ -53,8 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final results = await SmsService().checkNewFuelSms();
       if (results.isEmpty || !mounted) return;
 
-      final cars = await carService.getUserCars(uid).first;
+      final carsWithRole = await carService.getUserCarsWithRole(uid).first;
       if (!mounted) return;
+      final cars = carsWithRole.map((c) => c.car).toList();
 
       for (final sms in results) {
         if (!mounted) break;
@@ -128,7 +130,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             IconButton(
                               icon: const Icon(Icons.logout,
                                   color: Colors.white70),
-                              onPressed: () => authService.logout(),
+                              onPressed: () async {
+                                await authService.logout();
+                                if (context.mounted) {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                        builder: (_) => const LoginScreen()),
+                                    (route) => false,
+                                  );
+                                }
+                              },
                             ),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
@@ -525,6 +536,8 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
   }
 
   void _showMovementDialog() {
+    final isDriver = widget.role == 'driver';
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -558,7 +571,9 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 8),
               Text(
-                'تم رصد حركة السيارة.\nهل تريد تفعيل تتبع العداد التلقائي؟',
+                isDriver
+                    ? 'هل أنت سايق السيارة دلوقتي؟\nنقدر نبدأ تسجيل رحلة باسمك.'
+                    : 'تم رصد حركة السيارة.\nهل تريد تفعيل تتبع العداد التلقائي؟',
                 style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87),
               ),
             ],
@@ -576,19 +591,40 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
               child: Text('تجاهل',
                   style: GoogleFonts.cairo(color: Colors.grey[600])),
             ),
-            // تفعيل التتبع
+            // تفعيل التتبع — السلوك يعتمد على الدور
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1E88E5),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
               ),
-              icon: const Icon(Icons.location_on, color: Colors.white, size: 18),
-              label: Text('تفعيل التتبع',
+              icon: Icon(isDriver ? Icons.directions_car : Icons.location_on,
+                  color: Colors.white, size: 18),
+              label: Text(isDriver ? 'ابدأ رحلة' : 'تفعيل التتبع',
                   style: GoogleFonts.cairo(color: Colors.white)),
               onPressed: () async {
                 Navigator.pop(ctx);
                 _dialogPending = false;
+
+                if (isDriver) {
+                  if (mounted) {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ActiveTripScreen(car: widget.car),
+                      ),
+                    );
+                    // بعد انتهاء الرحلة، أعد المراقبة السلبية
+                    // عشان نقدر نكشف حركة جديدة في المستقبل
+                    if (mounted) {
+                      Future.delayed(const Duration(seconds: 30),
+                          () { if (mounted) _startPassiveMonitor(); });
+                    }
+                  }
+                  return;
+                }
+
+                // المالك: تتبع العداد التقليدي (بدون ربط باسم)
                 try {
                   await widget.bgService.startTracking(widget.car);
                   if (mounted) {
@@ -620,6 +656,22 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
         widget.bgService.activeTrackings.value.contains(widget.car.carId);
 
     if (!isTracking) {
+      // السواق دايمًا يروح لشاشة الرحلة (حتى لو ضغط الزرار اليدوي)
+      if (widget.role == 'driver') {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ActiveTripScreen(car: widget.car),
+          ),
+        );
+        if (mounted) {
+          Future.delayed(const Duration(seconds: 30),
+              () { if (mounted) _startPassiveMonitor(); });
+        }
+        return;
+      }
+
+      // المالك: تتبع عداد عادي
       try {
         await widget.bgService.startTracking(widget.car);
         if (mounted) {
@@ -830,7 +882,7 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => CarLocationScreen()),
+                          builder: (context) => CarLocationScreen(car: car)),
                     );
                   },
                   style: ElevatedButton.styleFrom(

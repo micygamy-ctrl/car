@@ -63,6 +63,40 @@ class CarPartService {
     await _firestore.collection(_collection).doc(part.partId).update(updateData);
   }
 
+  /// مجموعات كلمات مرادفة لتحديد "نوع" القطعة بغض النظر عن صيغة الاسم
+  /// (مثلاً "زيت المحرك" و"تغيير زيت الموتور" لازم يُعتبروا نفس القطعة)
+  static const Map<String, List<String>> _conceptGroups = {
+    'oil': ['زيت'],
+    'filter': ['فلتر', 'فلاتر'],
+    'engine': ['محرك', 'موتور'],
+    'air': ['هواء'],
+    'fuel': ['وقود', 'بنزين', 'سولار', 'بترول'],
+    'ac': ['تكييف'],
+    'spark': ['بوجيه', 'شمعات', 'شمعة'],
+    'brake': ['فرامل', 'تيل'],
+    'transmission': ['فتيس', 'جير', 'ناقل'],
+    'coolant': ['تبريد', 'مويه', 'مياه'],
+    'battery': ['بطاري'],
+    'tire': ['اطار', 'إطار', 'كاوتش', 'عجل'],
+    'power': ['باور', 'دركسيون'],
+    'timing': ['توقيت', 'تايمنج', 'سير', 'سيور'],
+  };
+
+  /// يحوّل اسم القطعة/عنوان الخدمة لمجموعة "مفاهيم" (مثلاً {oil, engine})
+  /// عشان نقدر نقارن قطعتين بمعنى واحد حتى لو الصياغة مختلفة
+  Set<String> _conceptsOf(String text) {
+    final result = <String>{};
+    for (final entry in _conceptGroups.entries) {
+      for (final word in entry.value) {
+        if (text.contains(word)) {
+          result.add(entry.key);
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
   Future<void> upsertFromServiceTitle({
     required String carId,
     required String serviceTitle,
@@ -88,7 +122,29 @@ class CarPartService {
     if (nextDueOdometer != null) updateData['nextDueOdometer'] = nextDueOdometer;
     if (nextDueDate != null) updateData['nextDueDate'] = nextDueDate;
 
-    // نحاول تحديث القطعة الموجودة بنفس الـ ID أولًا
+    // 1) أول حاجة: نشوف هل في قطعة موجودة بنفس "المفهوم" (زيت+محرك مثلًا)
+    //    حتى لو الاسم متكتب بصيغة مختلفة عن عنوان الخدمة
+    final newConcepts = _conceptsOf(serviceTitle);
+    if (newConcepts.isNotEmpty) {
+      final existingParts = await _firestore
+          .collection(_collection)
+          .where('carId', isEqualTo: carId)
+          .get();
+
+      for (final doc in existingParts.docs) {
+        final part = CarPartModel.fromMap(doc.data());
+        if (_conceptsOf(part.name).difference(newConcepts).isEmpty &&
+            newConcepts.difference(_conceptsOf(part.name)).isEmpty) {
+          await _firestore
+              .collection(_collection)
+              .doc(part.partId)
+              .update(updateData);
+          return;
+        }
+      }
+    }
+
+    // 2) نحاول تحديث القطعة الموجودة بنفس الـ ID (توافقًا مع البيانات القديمة)
     final exactDoc =
         await _firestore.collection(_collection).doc(exactPartId).get();
 
@@ -135,4 +191,3 @@ class CarPartService {
     return 'other';
   }
 }
-  

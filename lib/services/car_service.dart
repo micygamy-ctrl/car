@@ -21,16 +21,6 @@ class CarService {
     }
   }
 
-  Stream<List<CarModel>> getUserCars(String userId) {
-    return _firestore
-        .collection('cars')
-        .where('ownerId', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CarModel.fromMap(doc.data()))
-            .toList());
-  }
-
   /// Stream يجمع السيارات المملوكة + السيارات اللي المستخدم سواق فيها
   Stream<List<CarWithRole>> getUserCarsWithRole(String userId) {
     late StreamSubscription ownedSub;

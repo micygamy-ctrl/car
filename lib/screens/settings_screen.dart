@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -286,6 +287,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           );
                           if (confirm == true) {
                             await _authService.logout();
+                            if (context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                    builder: (_) => const LoginScreen()),
+                                (route) => false,
+                              );
+                            }
                           }
                         },
                         child: Container(

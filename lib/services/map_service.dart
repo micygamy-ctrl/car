@@ -46,8 +46,17 @@ class PlaceModel {
 }
 
 class MapService {
-  // ⚠️ ضع مفتاح Google Places API هنا
-  static const String _apiKey = 'YOUR_GOOGLE_PLACES_API_KEY';
+  // المفتاح بيُمرر وقت البناء عن طريق --dart-define، مش مكتوب هنا مباشرة.
+  // ده بيمنع ظهوره كـ نص صريح في الكود المرفوع على GitHub، وبيقلل (لكن
+  // لا يمنع تمامًا) ظهوره الواضح لو حد فك تشفير الـ APK.
+  // طريقة التشغيل/البناء:
+  //   flutter run --dart-define=GOOGLE_PLACES_API_KEY=مفتاحك_هنا
+  //   flutter build apk --dart-define=GOOGLE_PLACES_API_KEY=مفتاحك_هنا
+  static const String _apiKey =
+      String.fromEnvironment('GOOGLE_PLACES_API_KEY', defaultValue: '');
+
+  /// هل تم تمرير مفتاح فعلي وقت البناء؟
+  static bool get isConfigured => _apiKey.isNotEmpty;
 
   /// طلب إذن الموقع والحصول على الموقع الحالي
   Future<Position?> getCurrentLocation() async {
@@ -73,6 +82,8 @@ class MapService {
     required String type, // 'gas_station' أو 'car_repair'
     int radius = 3000,
   }) async {
+    if (!isConfigured) return [];
+
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
       '?location=$lat,$lng'

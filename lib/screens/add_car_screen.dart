@@ -85,7 +85,7 @@ class _AddCarScreenState extends State<AddCarScreen> {
   bool _isLoading = false;
 
   final List<Map<String, dynamic>> _parts = [
-    {'title': 'زيت المحرك', 'category': 'maintenance', 'icon': Icons.oil_barrel, 'color': const Color(0xFFFB8C00), 'kmController': TextEditingController(text: '5000'), 'daysController': TextEditingController(text: '180'), 'enabled': true},
+    {'title': 'زيت الموتور', 'category': 'maintenance', 'icon': Icons.oil_barrel, 'color': const Color(0xFFFB8C00), 'kmController': TextEditingController(text: '5000'), 'daysController': TextEditingController(text: '180'), 'enabled': true},
     {'title': 'فلتر الهواء', 'category': 'maintenance', 'icon': Icons.air, 'color': const Color(0xFF1E88E5), 'kmController': TextEditingController(text: '15000'), 'daysController': TextEditingController(text: '365'), 'enabled': true},
     {'title': 'الكاوتش', 'category': 'maintenance', 'icon': Icons.tire_repair, 'color': const Color(0xFF43A047), 'kmController': TextEditingController(text: '40000'), 'daysController': TextEditingController(text: ''), 'enabled': true},
     {'title': 'سيور التوقيت', 'category': 'maintenance', 'icon': Icons.settings, 'color': const Color(0xFF8E24AA), 'kmController': TextEditingController(text: '60000'), 'daysController': TextEditingController(text: ''), 'enabled': true},

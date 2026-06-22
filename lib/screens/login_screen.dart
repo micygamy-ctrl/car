@@ -73,7 +73,6 @@ class _LoginScreenState extends State<LoginScreen>
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
-        // حفظ الإيميل لو Remember Me مفعل
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('remember_me', _rememberMe);
         if (_rememberMe) {
@@ -89,10 +88,9 @@ class _LoginScreenState extends State<LoginScreen>
         );
       }
 
-      // انتقل فوراً بدون انتظار StreamBuilder
+      // navigate صريح عشان مش نعتمد على Stream بس
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
           (route) => false,
         );

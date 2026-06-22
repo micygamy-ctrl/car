@@ -11,8 +11,9 @@ import 'add_fuel_screen.dart';
 
 class LogsScreen extends StatefulWidget {
   final CarModel car;
+  final bool isAdmin;
 
-  const LogsScreen({super.key, required this.car});
+  const LogsScreen({super.key, required this.car, this.isAdmin = true});
 
   @override
   State<LogsScreen> createState() => _LogsScreenState();
@@ -248,53 +249,7 @@ class _LogsScreenState extends State<LogsScreen>
       daysLeft = log.expiryDate!.difference(DateTime.now()).inDays;
     }
 
-    return Dismissible(
-      key: Key(log.logId),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.red,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete, color: Colors.white, size: 30),
-      ),
-      confirmDismiss: (direction) async {
-        return await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text('حذف الخدمة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-            content: Text('متأكد إنك عايز تمسح الخدمة دي؟',
-                style: GoogleFonts.cairo()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text('لا', style: GoogleFonts.cairo()),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text('امسح',
-                    style: GoogleFonts.cairo(color: Colors.red)),
-              ),
-            ],
-          ),
-        );
-      },
-      onDismissed: (direction) async {
-        await _maintenanceService.deleteMaintenanceLog(log.logId);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('تم حذف الخدمة', style: GoogleFonts.cairo()),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
-      child: Container(
+    final card = Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -468,11 +423,154 @@ class _LogsScreenState extends State<LogsScreen>
             ],
           ),
         ),
+      );
+
+    if (!widget.isAdmin) return card;
+
+    return Dismissible(
+      key: Key(log.logId),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete, color: Colors.white, size: 30),
       ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('حذف الخدمة',
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            content: Text('متأكد إنك عايز تمسح الخدمة دي؟',
+                style: GoogleFonts.cairo()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('لا', style: GoogleFonts.cairo()),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('امسح',
+                    style: GoogleFonts.cairo(color: Colors.red)),
+              ),
+            ],
+          ),
+        );
+      },
+      onDismissed: (direction) async {
+        await _maintenanceService.deleteMaintenanceLog(log.logId);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تم حذف الخدمة', style: GoogleFonts.cairo()),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: card,
     );
   }
 
   Widget _buildFuelCard(FuelLogModel log) {
+    final card = Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFB8C00).withAlpha(26),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${log.totalCost.toStringAsFixed(2)} ج.م',
+                    style: GoogleFonts.cairo(
+                      color: const Color(0xFFFB8C00),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      DateFormat('dd/MM/yyyy').format(log.date),
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                    ),
+                    if (log.stationName != null)
+                      Text(
+                        log.stationName!,
+                        style: GoogleFonts.cairo(
+                            color: Colors.grey, fontSize: 12),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildLogStat(Icons.speed, '${log.odometer} كم', Colors.blue),
+                _buildLogStat(Icons.local_gas_station,
+                    '${log.fuelAmount} لتر', const Color(0xFFFB8C00)),
+                _buildLogStat(Icons.attach_money,
+                    '${log.pricePerUnit} ج.م/ل', Colors.green),
+                if (log.calculatedEfficiency != null)
+                  _buildLogStat(
+                      Icons.show_chart,
+                      '${log.calculatedEfficiency!.toStringAsFixed(1)} ل/100',
+                      Colors.purple),
+              ],
+            ),
+            if (log.isFullTank) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'خزان ممتلئ',
+                    style: GoogleFonts.cairo(
+                        color: Colors.green, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.check_circle,
+                      color: Colors.green, size: 14),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (!widget.isAdmin) return card;
+
     return Dismissible(
       key: Key(log.logId),
       direction: DismissDirection.endToStart,
@@ -519,96 +617,7 @@ class _LogsScreenState extends State<LogsScreen>
           );
         }
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(15),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFB8C00).withAlpha(26),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${log.totalCost.toStringAsFixed(2)} ج.م',
-                      style: GoogleFonts.cairo(
-                        color: const Color(0xFFFB8C00),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        DateFormat('dd/MM/yyyy').format(log.date),
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
-                      ),
-                      if (log.stationName != null)
-                        Text(
-                          log.stationName!,
-                          style: GoogleFonts.cairo(
-                              color: Colors.grey, fontSize: 12),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              const Divider(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildLogStat(Icons.speed, '${log.odometer} كم', Colors.blue),
-                  _buildLogStat(Icons.local_gas_station,
-                      '${log.fuelAmount} لتر', const Color(0xFFFB8C00)),
-                  _buildLogStat(Icons.attach_money,
-                      '${log.pricePerUnit} ج.م/ل', Colors.green),
-                  if (log.calculatedEfficiency != null)
-                    _buildLogStat(
-                        Icons.show_chart,
-                        '${log.calculatedEfficiency!.toStringAsFixed(1)} ل/100',
-                        Colors.purple),
-                ],
-              ),
-              if (log.isFullTank) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      'خزان ممتلئ',
-                      style: GoogleFonts.cairo(
-                          color: Colors.green, fontSize: 12),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.check_circle,
-                        color: Colors.green, size: 14),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      child: card,
     );
   }
 

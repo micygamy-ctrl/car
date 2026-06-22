@@ -198,23 +198,28 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                     builder: (_) =>
                                         AddServiceScreen(car: _car)));
                           }),
-                          const SizedBox(width: 8),
-                          _quickBtn(context, Icons.speed, 'عداد',
-                              const Color(0xFF1E88E5), () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => OdometerUpdateScreen(
-                                        car: _car)));
-                          }),
+                          // زرار العداد للمالك فقط — السواق عداده بيتحدث
+                          // تلقائيًا من خلال تسجيل الرحلات
+                          if (widget.isAdmin) ...[
+                            const SizedBox(width: 8),
+                            _quickBtn(context, Icons.speed, 'عداد',
+                                const Color(0xFF1E88E5), () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => OdometerUpdateScreen(
+                                          car: _car)));
+                            }),
+                          ],
                           const SizedBox(width: 8),
                           _quickBtn(context, Icons.history, 'سجلات',
                               const Color(0xFF8E24AA), () {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        LogsScreen(car: _car)));
+                                    builder: (_) => LogsScreen(
+                                        car: _car,
+                                        isAdmin: widget.isAdmin)));
                           }),
                           const SizedBox(width: 8),
                           _quickBtn(context, Icons.bar_chart, 'تقارير',
@@ -229,72 +234,73 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // ═══════════════════════ زرار الرحلات ═══════════════════════
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        ActiveTripScreen(car: _car)),
-                              ),
-                              child: Container(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF43A047),
-                                      Color(0xFF2E7D32)
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(14),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF43A047)
-                                          .withAlpha(80),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.play_arrow,
-                                        color: Colors.white, size: 22),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'ابدأ رحلة',
-                                      style: GoogleFonts.cairo(
-                                        color: Colors.white,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _quickBtn(
-                                context, Icons.history_edu, 'الرحلات',
-                                const Color(0xFF00ACC1), () {
-                              Navigator.push(
+                      // ═══════════════════════ زرار الرحلات (سواق فقط) ═══════════════════════
+                      if (!widget.isAdmin)
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: GestureDetector(
+                                onTap: () => Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                       builder: (_) =>
-                                          TripsHistoryScreen(car: _car)));
-                            }),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                                          ActiveTripScreen(car: _car)),
+                                ),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF43A047),
+                                        Color(0xFF2E7D32)
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF43A047)
+                                            .withAlpha(80),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.play_arrow,
+                                          color: Colors.white, size: 22),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'ابدأ رحلة',
+                                        style: GoogleFonts.cairo(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _quickBtn(
+                                  context, Icons.history_edu, 'الرحلات',
+                                  const Color(0xFF00ACC1), () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            TripsHistoryScreen(car: _car)));
+                              }),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 10),
 
                       // ═══════════════════════ لو في تحذيرات ═══════════════════════
                       if (overdueCount > 0)
@@ -566,9 +572,11 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
 
     final prog = part.progress(_car.currentOdometer);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(13),
+    return GestureDetector(
+      onLongPress: () => _confirmDeletePart(part),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -662,6 +670,67 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
                 ),
             ],
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════
+  //  حذف قطعة (Long Press على الكارت)
+  // ══════════════════════════════════════
+  void _confirmDeletePart(CarPartModel part) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('حذف "${part.name}"؟',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.right),
+        content: Text(
+          'هتشيل القطعة دي من قائمة الصيانة. تقدر تستخدم هذا الخيار لحذف القطع المكررة.',
+          style: GoogleFonts.cairo(),
+          textAlign: TextAlign.right,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إلغاء', style: GoogleFonts.cairo()),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _partService.disablePart(part.partId);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('تم حذف "${part.name}"',
+                          style: GoogleFonts.cairo()),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('حدث خطأ: $e', style: GoogleFonts.cairo()),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text('حذف',
+                style: GoogleFonts.cairo(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
