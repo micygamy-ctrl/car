@@ -1,1 +1,25 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"car-app-7872f","appId":"1:365490223161:android:21035ba5682d57970075e8","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"car-app-7872f","configurations":{"android":"1:365490223161:android:21035ba5682d57970075e8","ios":"1:365490223161:ios:9fcc9bd35306e8580075e8"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "car-app-7872f",
+          "appId": "1:365490223161:android:21035ba5682d57970075e8",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "car-app-7872f",
+          "configurations": {
+            "android": "1:365490223161:android:21035ba5682d57970075e8",
+            "ios": "1:365490223161:ios:9fcc9bd35306e8580075e8"
+          }
+        }
+      }
+    }
+  }
+}

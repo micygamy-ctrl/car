@@ -96,8 +96,8 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
 
   Future<void> _startTracking() async {
     try {
-      _baseOdometer =
-          double.tryParse(_odometerController.text) ?? widget.car.currentOdometer;
+      _baseOdometer = double.tryParse(_odometerController.text) ??
+          widget.car.currentOdometer;
       await BackgroundTrackingService().startTracking(widget.car);
       setState(() {
         _isTracking = true;
@@ -396,8 +396,7 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
           // ─── نتيجة المسافة بعد الإيقاف ───
           if (_trackedDistance > 0 && !_isTracking) ...[
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E88E5).withAlpha(20),
                 borderRadius: BorderRadius.circular(12),
@@ -530,11 +529,11 @@ class _OdometerUpdateScreenState extends State<OdometerUpdateScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _liveChip(Icons.route,
-                      '${distKm.toStringAsFixed(2)} كم', Colors.greenAccent),
+                  _liveChip(Icons.route, '${distKm.toStringAsFixed(2)} كم',
+                      Colors.greenAccent),
                   Container(width: 1, height: 28, color: Colors.white24),
-                  _liveChip(Icons.timer_outlined, '$m:$s',
-                      Colors.lightBlueAccent),
+                  _liveChip(
+                      Icons.timer_outlined, '$m:$s', Colors.lightBlueAccent),
                 ],
               ),
             ],

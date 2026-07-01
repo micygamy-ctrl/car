@@ -24,9 +24,22 @@ class SmsService {
   final SmsQuery _query = SmsQuery();
 
   static const List<String> _fuelKeywords = [
-    'محطة', 'وقود', 'بنزين', 'ديزل', 'سولار', 'بترول',
-    'total', 'misr petroleum', 'petrol', 'fuel', 'gas station',
-    'petroleum', 'taqa', 'watanya', 'shell', 'mobil',
+    'محطة',
+    'وقود',
+    'بنزين',
+    'ديزل',
+    'سولار',
+    'بترول',
+    'total',
+    'misr petroleum',
+    'petrol',
+    'fuel',
+    'gas station',
+    'petroleum',
+    'taqa',
+    'watanya',
+    'shell',
+    'mobil',
   ];
 
   Future<bool> requestPermissions() async {
@@ -54,7 +67,12 @@ class SmsService {
 
       final body = msg.body ?? '';
       final sender = msg.sender ?? '';
-      final result = _parseSms(id, body, sender, msg.date ?? DateTime.now());
+      final result = SmsService.parseFuelSms(
+        id,
+        body,
+        sender,
+        msg.date ?? DateTime.now(),
+      );
 
       if (result != null) results.add(result);
     }
@@ -72,7 +90,12 @@ class SmsService {
     }
   }
 
-  SmsFuelResult? _parseSms(String id, String body, String sender, DateTime date) {
+  static SmsFuelResult? parseFuelSms(
+    String id,
+    String body,
+    String sender,
+    DateTime date,
+  ) {
     final lower = body.toLowerCase();
 
     final isFuel = _fuelKeywords.any((k) => lower.contains(k.toLowerCase()));
@@ -96,18 +119,28 @@ class SmsService {
     );
   }
 
-  bool _containsDebitKeyword(String lower) {
+  static bool _containsDebitKeyword(String lower) {
     const words = [
-      'خصم', 'سحب', 'دفع', 'مدين', 'تم الخصم',
-      'purchase', 'debit', 'used for', 'payment', 'pos', 'charged',
+      'خصم',
+      'سحب',
+      'دفع',
+      'مدين',
+      'تم الخصم',
+      'purchase',
+      'debit',
+      'used for',
+      'payment',
+      'pos',
+      'charged',
     ];
     return words.any((w) => lower.contains(w));
   }
 
-  double? _extractAmount(String body) {
+  static double? _extractAmount(String body) {
     final patterns = [
       RegExp(r'EGP\s*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false),
-      RegExp(r'([\d,]+(?:\.\d{1,2})?)\s*(?:جنيه|ج\.م|egp)', caseSensitive: false),
+      RegExp(r'([\d,]+(?:\.\d{1,2})?)\s*(?:جنيه|ج\.م|egp)',
+          caseSensitive: false),
       RegExp(r'مبلغ\s*([\d,]+(?:\.\d{1,2})?)'),
       RegExp(r'amount[:\s]*([\d,]+(?:\.\d{1,2})?)', caseSensitive: false),
     ];
@@ -121,9 +154,10 @@ class SmsService {
     return null;
   }
 
-  String? _extractMerchant(String body) {
+  static String? _extractMerchant(String body) {
     final patterns = [
-      RegExp(r'at\s+([A-Za-z0-9\s\-&]+?)(?:\s+on|\s+\d|$)', caseSensitive: false),
+      RegExp(r'at\s+([A-Za-z0-9\s\-&]+?)(?:\s+on|\s+\d|$)',
+          caseSensitive: false),
       RegExp(r'لدى\s+(.+?)(?:\s+بتاريخ|$)'),
       RegExp(r'merchant[:\s]+([A-Za-z0-9\s]+)', caseSensitive: false),
     ];
@@ -140,7 +174,7 @@ class SmsService {
     return null;
   }
 
-  String _detectBank(String sender, String body) {
+  static String _detectBank(String sender, String body) {
     final s = (sender + body).toLowerCase();
     if (s.contains('cib')) return 'CIB';
     if (s.contains('nbe') || s.contains('أهلي')) return 'البنك الأهلي';

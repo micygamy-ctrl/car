@@ -9,10 +9,7 @@ class FuelService {
   // إضافة سجل وقود جديد
   Future<void> addFuelLog(FuelLogModel log) async {
     try {
-      await _firestore
-          .collection('fuelLogs')
-          .doc(log.logId)
-          .set(log.toMap());
+      await _firestore.collection('fuelLogs').doc(log.logId).set(log.toMap());
     } catch (e) {
       rethrow;
     }
@@ -20,18 +17,17 @@ class FuelService {
 
   // جلب سجلات وقود سيارة معينة
   Stream<List<FuelLogModel>> getCarFuelLogs(String carId) {
-  return _firestore
-      .collection('fuelLogs')
-      .where('carId', isEqualTo: carId)
-      .snapshots()
-      .map((snapshot) {
-        final logs = snapshot.docs
-            .map((doc) => FuelLogModel.fromMap(doc.data()))
-            .toList();
-        logs.sort((a, b) => b.date.compareTo(a.date));
-        return logs;
-      });
-}
+    return _firestore
+        .collection('fuelLogs')
+        .where('carId', isEqualTo: carId)
+        .snapshots()
+        .map((snapshot) {
+      final logs =
+          snapshot.docs.map((doc) => FuelLogModel.fromMap(doc.data())).toList();
+      logs.sort((a, b) => b.date.compareTo(a.date));
+      return logs;
+    });
+  }
 
   // حساب متوسط الاستهلاك
   Future<double?> getAverageEfficiency(String carId) async {
@@ -45,7 +41,8 @@ class FuelService {
           .get();
 
       List<FuelLogModel> logs = snapshot.docs
-          .map((doc) => FuelLogModel.fromMap(doc.data() as Map<String, dynamic>))
+          .map(
+              (doc) => FuelLogModel.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
 
       if (logs.length < 2) return null;

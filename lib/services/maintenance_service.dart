@@ -8,8 +8,13 @@ class MaintenanceService {
 
   Future<void> addServiceLog(ServiceLogModel log) async {
     try {
-      await _firestore.collection('serviceLogs').doc(log.logId).set(log.toMap());
-    } catch (e) { rethrow; }
+      await _firestore
+          .collection('serviceLogs')
+          .doc(log.logId)
+          .set(log.toMap());
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> addMaintenanceLog(ServiceLogModel log) => addServiceLog(log);
@@ -20,7 +25,9 @@ class MaintenanceService {
         .where('carId', isEqualTo: carId)
         .snapshots()
         .map((snapshot) {
-      final logs = snapshot.docs.map((doc) => ServiceLogModel.fromMap(doc.data())).toList();
+      final logs = snapshot.docs
+          .map((doc) => ServiceLogModel.fromMap(doc.data()))
+          .toList();
       logs.sort((a, b) => b.date.compareTo(a.date));
       return logs;
     });
@@ -51,19 +58,28 @@ class MaintenanceService {
   Future<void> updateServiceLog(String logId, Map<String, dynamic> data) async {
     try {
       await _firestore.collection('serviceLogs').doc(logId).update(data);
-    } catch (e) { rethrow; }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> deleteMaintenanceLog(String logId) async {
     try {
       await _firestore.collection('serviceLogs').doc(logId).delete();
-    } catch (e) { rethrow; }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> markReminderSent(String logId) async {
     try {
-      await _firestore.collection('serviceLogs').doc(logId).update({'reminderSent': true});
-    } catch (e) { rethrow; }
+      await _firestore
+          .collection('serviceLogs')
+          .doc(logId)
+          .update({'reminderSent': true});
+    } catch (e) {
+      rethrow;
+    }
   }
 
   String generateId() => _uuid.v4();

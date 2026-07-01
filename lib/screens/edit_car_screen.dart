@@ -57,8 +57,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
     _plateController = TextEditingController(text: widget.car.licensePlate);
     _odometerController = TextEditingController(
         text: widget.car.currentOdometer.toStringAsFixed(0));
-    _tankCapacityController = TextEditingController(
-        text: widget.car.tankCapacity.toStringAsFixed(0));
+    _tankCapacityController =
+        TextEditingController(text: widget.car.tankCapacity.toStringAsFixed(0));
     _oilIntervalController = TextEditingController(
         text: widget.car.oilChangeInterval.toStringAsFixed(0));
     _selectedFuelType = widget.car.fuelType;
@@ -79,8 +79,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
               text: p.nextDueOdometer?.toStringAsFixed(0) ?? '');
           _partIntervalKmCtrl[p.partId] = TextEditingController(
               text: p.intervalKm?.toStringAsFixed(0) ?? '');
-          _partIntervalDaysCtrl[p.partId] = TextEditingController(
-              text: p.intervalDays?.toString() ?? '');
+          _partIntervalDaysCtrl[p.partId] =
+              TextEditingController(text: p.intervalDays?.toString() ?? '');
           _partNextDates[p.partId] = p.nextDueDate;
         }
         _partsLoaded = true;
@@ -126,8 +126,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
           'currentOdometer': newOdometer,
           'fuelType': _selectedFuelType,
           'tankCapacity': double.parse(_tankCapacityController.text.trim()),
-          'oilChangeInterval':
-              double.parse(_oilIntervalController.text.trim()),
+          'oilChangeInterval': double.parse(_oilIntervalController.text.trim()),
         }),
         _savePartsEdits(),
       ]);
@@ -202,10 +201,10 @@ class _EditCarScreenState extends State<EditCarScreen> {
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Text(
-                part.name,
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.right,
-              ),
+              part.name,
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.right,
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -243,8 +242,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: ctx,
-                        initialDate:
-                            pickedDate ?? DateTime.now().add(const Duration(days: 30)),
+                        initialDate: pickedDate ??
+                            DateTime.now().add(const Duration(days: 30)),
                         firstDate: DateTime.now(),
                         lastDate: DateTime(2100),
                         builder: (c, child) => Theme(
@@ -459,9 +458,8 @@ class _EditCarScreenState extends State<EditCarScreen> {
                           hint: 'مثال: 45000',
                           icon: Icons.speed,
                           keyboardType: TextInputType.number,
-                          validator: (v) => v!.isEmpty
-                              ? 'من فضلك أدخل قراءة العداد'
-                              : null,
+                          validator: (v) =>
+                              v!.isEmpty ? 'من فضلك أدخل قراءة العداد' : null,
                         ),
                         _buildTextField(
                           controller: _tankCapacityController,
@@ -625,8 +623,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
                 color: const Color(0xFF1E88E5).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.edit,
-                  size: 16, color: Color(0xFF1E88E5)),
+              child: const Icon(Icons.edit, size: 16, color: Color(0xFF1E88E5)),
             ),
             // التفاصيل
             Expanded(
@@ -722,12 +719,11 @@ class _EditCarScreenState extends State<EditCarScreen> {
             children: _fuelTypes.map((fuel) {
               final isSelected = _selectedFuelType == fuel['value'];
               return GestureDetector(
-                onTap: () =>
-                    setState(() => _selectedFuelType = fuel['value']),
+                onTap: () => setState(() => _selectedFuelType = fuel['value']),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? const Color(0xFF1E88E5)
@@ -736,8 +732,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                                color: const Color(0xFF1E88E5)
-                                    .withOpacity(0.3),
+                                color: const Color(0xFF1E88E5).withOpacity(0.3),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4))
                           ]
@@ -751,8 +746,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
                       const SizedBox(height: 4),
                       Text(fuel['label'],
                           style: GoogleFonts.cairo(
-                            color:
-                                isSelected ? Colors.white : Colors.grey,
+                            color: isSelected ? Colors.white : Colors.grey,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           )),
@@ -839,8 +833,7 @@ class _EditCarScreenState extends State<EditCarScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: Color(0xFF1E88E5), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
           ),
         ),
         validator: validator,

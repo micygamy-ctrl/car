@@ -28,15 +28,60 @@ class _LogsScreenState extends State<LogsScreen>
   String _selectedCategory = 'all';
 
   final List<Map<String, dynamic>> _categories = [
-    {'value': 'all', 'label': 'الكل', 'icon': Icons.list_alt, 'color': Colors.grey},
-    {'value': 'maintenance', 'label': 'صيانة', 'icon': Icons.build, 'color': Color(0xFF43A047)},
-    {'value': 'insurance', 'label': 'تأمين', 'icon': Icons.shield, 'color': Color(0xFF1E88E5)},
-    {'value': 'license', 'label': 'رخصة', 'icon': Icons.credit_card, 'color': Color(0xFF8E24AA)},
-    {'value': 'violation', 'label': 'مخالفة', 'icon': Icons.warning, 'color': Color(0xFFE53935)},
-    {'value': 'wash', 'label': 'غسيل', 'icon': Icons.local_car_wash, 'color': Color(0xFF00ACC1)},
-    {'value': 'inspection', 'label': 'فحص', 'icon': Icons.fact_check, 'color': Color(0xFFFB8C00)},
-    {'value': 'emergency', 'label': 'طوارئ', 'icon': Icons.emergency, 'color': Color(0xFFD81B60)},
-    {'value': 'other', 'label': 'أخرى', 'icon': Icons.more_horiz, 'color': Colors.grey},
+    {
+      'value': 'all',
+      'label': 'الكل',
+      'icon': Icons.list_alt,
+      'color': Colors.grey
+    },
+    {
+      'value': 'maintenance',
+      'label': 'صيانة',
+      'icon': Icons.build,
+      'color': Color(0xFF43A047)
+    },
+    {
+      'value': 'insurance',
+      'label': 'تأمين',
+      'icon': Icons.shield,
+      'color': Color(0xFF1E88E5)
+    },
+    {
+      'value': 'license',
+      'label': 'رخصة',
+      'icon': Icons.credit_card,
+      'color': Color(0xFF8E24AA)
+    },
+    {
+      'value': 'violation',
+      'label': 'مخالفة',
+      'icon': Icons.warning,
+      'color': Color(0xFFE53935)
+    },
+    {
+      'value': 'wash',
+      'label': 'غسيل',
+      'icon': Icons.local_car_wash,
+      'color': Color(0xFF00ACC1)
+    },
+    {
+      'value': 'inspection',
+      'label': 'فحص',
+      'icon': Icons.fact_check,
+      'color': Color(0xFFFB8C00)
+    },
+    {
+      'value': 'emergency',
+      'label': 'طوارئ',
+      'icon': Icons.emergency,
+      'color': Color(0xFFD81B60)
+    },
+    {
+      'value': 'other',
+      'label': 'أخرى',
+      'icon': Icons.more_horiz,
+      'color': Colors.grey
+    },
   ];
 
   @override
@@ -68,11 +113,13 @@ class _LogsScreenState extends State<LogsScreen>
         ),
         onPressed: () {
           if (_tabController.index == 0) {
-            Navigator.push(context,
+            Navigator.push(
+                context,
                 MaterialPageRoute(
                     builder: (_) => AddFuelScreen(car: widget.car)));
           } else {
-            Navigator.push(context,
+            Navigator.push(
+                context,
                 MaterialPageRoute(
                     builder: (_) => AddServiceScreen(car: widget.car)));
           }
@@ -139,8 +186,8 @@ class _LogsScreenState extends State<LogsScreen>
         }
         final logs = snapshot.data ?? [];
         if (logs.isEmpty) {
-          return _buildEmpty('مفيش سجلات وقود لسه',
-              Icons.local_gas_station, const Color(0xFFFB8C00));
+          return _buildEmpty('مفيش سجلات وقود لسه', Icons.local_gas_station,
+              const Color(0xFFFB8C00));
         }
         return ListView.builder(
           padding: const EdgeInsets.all(16),
@@ -172,18 +219,21 @@ class _LogsScreenState extends State<LogsScreen>
               color: Colors.white,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 itemCount: _categories.length,
                 itemBuilder: (context, index) {
                   final cat = _categories[index];
                   final isSelected = _selectedCategory == cat['value'];
                   final color = cat['color'] as Color;
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedCategory = cat['value']),
+                    onTap: () =>
+                        setState(() => _selectedCategory = cat['value']),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: isSelected ? color : color.withAlpha(26),
                         borderRadius: BorderRadius.circular(20),
@@ -211,8 +261,8 @@ class _LogsScreenState extends State<LogsScreen>
             ),
             Expanded(
               child: logs.isEmpty
-                  ? _buildEmpty('مفيش سجلات لسه',
-                      Icons.miscellaneous_services, const Color(0xFF43A047))
+                  ? _buildEmpty('مفيش سجلات لسه', Icons.miscellaneous_services,
+                      const Color(0xFF43A047))
                   : ListView.builder(
                       padding: const EdgeInsets.all(16),
                       itemCount: logs.length,
@@ -228,15 +278,51 @@ class _LogsScreenState extends State<LogsScreen>
 
   Widget _buildServiceCard(ServiceLogModel log) {
     final categoryData = {
-      'maintenance': {'label': 'صيانة', 'icon': Icons.build, 'color': const Color(0xFF43A047)},
-      'insurance': {'label': 'تأمين', 'icon': Icons.shield, 'color': const Color(0xFF1E88E5)},
-      'license': {'label': 'رخصة', 'icon': Icons.credit_card, 'color': const Color(0xFF8E24AA)},
-      'violation': {'label': 'مخالفة', 'icon': Icons.warning, 'color': const Color(0xFFE53935)},
-      'wash': {'label': 'غسيل', 'icon': Icons.local_car_wash, 'color': const Color(0xFF00ACC1)},
-      'inspection': {'label': 'فحص', 'icon': Icons.fact_check, 'color': const Color(0xFFFB8C00)},
-      'emergency': {'label': 'طوارئ', 'icon': Icons.emergency, 'color': const Color(0xFFD81B60)},
-      'oil_change': {'label': 'تغيير زيت', 'icon': Icons.oil_barrel, 'color': Colors.orange},
-      'other': {'label': 'أخرى', 'icon': Icons.more_horiz, 'color': Colors.grey},
+      'maintenance': {
+        'label': 'صيانة',
+        'icon': Icons.build,
+        'color': const Color(0xFF43A047)
+      },
+      'insurance': {
+        'label': 'تأمين',
+        'icon': Icons.shield,
+        'color': const Color(0xFF1E88E5)
+      },
+      'license': {
+        'label': 'رخصة',
+        'icon': Icons.credit_card,
+        'color': const Color(0xFF8E24AA)
+      },
+      'violation': {
+        'label': 'مخالفة',
+        'icon': Icons.warning,
+        'color': const Color(0xFFE53935)
+      },
+      'wash': {
+        'label': 'غسيل',
+        'icon': Icons.local_car_wash,
+        'color': const Color(0xFF00ACC1)
+      },
+      'inspection': {
+        'label': 'فحص',
+        'icon': Icons.fact_check,
+        'color': const Color(0xFFFB8C00)
+      },
+      'emergency': {
+        'label': 'طوارئ',
+        'icon': Icons.emergency,
+        'color': const Color(0xFFD81B60)
+      },
+      'oil_change': {
+        'label': 'تغيير زيت',
+        'icon': Icons.oil_barrel,
+        'color': Colors.orange
+      },
+      'other': {
+        'label': 'أخرى',
+        'icon': Icons.more_horiz,
+        'color': Colors.grey
+      },
     };
 
     final data = categoryData[log.category] ?? categoryData['other']!;
@@ -250,180 +336,181 @@ class _LogsScreenState extends State<LogsScreen>
     }
 
     final card = Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(15),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withAlpha(26),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(icon, color: color, size: 14),
-                            const SizedBox(width: 4),
-                            Text(label,
-                                style: GoogleFonts.cairo(
-                                    color: color,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(15),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(26),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withAlpha(26),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${log.cost.toStringAsFixed(0)} ج.م',
-                          style: GoogleFonts.cairo(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, color: color, size: 14),
+                          const SizedBox(width: 4),
+                          Text(label,
+                              style: GoogleFonts.cairo(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold)),
+                        ],
                       ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        log.title,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(26),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${log.cost.toStringAsFixed(0)} ج.م',
                         style: GoogleFonts.cairo(
-                            fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      Text(
-                        DateFormat('dd/MM/yyyy').format(log.date),
-                        style: GoogleFonts.cairo(
-                            color: Colors.grey, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const Divider(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (log.garage != null)
-                    _buildLogStat(Icons.garage, log.garage!, Colors.grey),
-                  if (log.odometer != null)
-                    _buildLogStat(Icons.speed,
-                        '${log.odometer!.toStringAsFixed(0)} كم', Colors.blue),
-                  if (log.provider != null)
-                    _buildLogStat(Icons.business, log.provider!, Colors.purple),
-                ],
-              ),
-              if (log.expiryDate != null) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: daysLeft != null && daysLeft <= 30
-                        ? Colors.red.withAlpha(26)
-                        : Colors.green.withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        daysLeft != null && daysLeft <= 0
-                            ? 'انتهت الصلاحية!'
-                            : daysLeft != null && daysLeft <= 30
-                                ? 'ينتهي خلال $daysLeft يوم!'
-                                : 'ينتهي في ${DateFormat('dd/MM/yyyy').format(log.expiryDate!)}',
-                        style: GoogleFonts.cairo(
-                          color: daysLeft != null && daysLeft <= 30
-                              ? Colors.red
-                              : Colors.green,
-                          fontSize: 12,
+                          color: color,
                           fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        daysLeft != null && daysLeft <= 30
-                            ? Icons.warning
-                            : Icons.check_circle,
-                        color: daysLeft != null && daysLeft <= 30
-                            ? Colors.red
-                            : Colors.green,
-                        size: 14,
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-              if (log.nextDueOdometer != null) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'الموعد القادم عند ${log.nextDueOdometer!.toStringAsFixed(0)} كم',
-                        style: GoogleFonts.cairo(
-                            color: Colors.blue, fontSize: 12),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.update, color: Colors.blue, size: 14),
-                    ],
-                  ),
-                ),
-              ],
-              if (log.notes != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      log.notes!,
+                      log.title,
                       style: GoogleFonts.cairo(
-                          color: Colors.grey, fontSize: 12),
+                          fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.note, color: Colors.grey, size: 14),
+                    Text(
+                      DateFormat('dd/MM/yyyy').format(log.date),
+                      style:
+                          GoogleFonts.cairo(color: Colors.grey, fontSize: 12),
+                    ),
                   ],
                 ),
               ],
+            ),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (log.garage != null)
+                  _buildLogStat(Icons.garage, log.garage!, Colors.grey),
+                if (log.odometer != null)
+                  _buildLogStat(Icons.speed,
+                      '${log.odometer!.toStringAsFixed(0)} كم', Colors.blue),
+                if (log.provider != null)
+                  _buildLogStat(Icons.business, log.provider!, Colors.purple),
+              ],
+            ),
+            if (log.expiryDate != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: daysLeft != null && daysLeft <= 30
+                      ? Colors.red.withAlpha(26)
+                      : Colors.green.withAlpha(26),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      daysLeft != null && daysLeft <= 0
+                          ? 'انتهت الصلاحية!'
+                          : daysLeft != null && daysLeft <= 30
+                              ? 'ينتهي خلال $daysLeft يوم!'
+                              : 'ينتهي في ${DateFormat('dd/MM/yyyy').format(log.expiryDate!)}',
+                      style: GoogleFonts.cairo(
+                        color: daysLeft != null && daysLeft <= 30
+                            ? Colors.red
+                            : Colors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      daysLeft != null && daysLeft <= 30
+                          ? Icons.warning
+                          : Icons.check_circle,
+                      color: daysLeft != null && daysLeft <= 30
+                          ? Colors.red
+                          : Colors.green,
+                      size: 14,
+                    ),
+                  ],
+                ),
+              ),
             ],
-          ),
+            if (log.nextDueOdometer != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withAlpha(26),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'الموعد القادم عند ${log.nextDueOdometer!.toStringAsFixed(0)} كم',
+                      style:
+                          GoogleFonts.cairo(color: Colors.blue, fontSize: 12),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.update, color: Colors.blue, size: 14),
+                  ],
+                ),
+              ),
+            ],
+            if (log.notes != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    log.notes!,
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 12),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.note, color: Colors.grey, size: 14),
+                ],
+              ),
+            ],
+          ],
         ),
-      );
+      ),
+    );
 
     if (!widget.isAdmin) return card;
 
@@ -455,8 +542,8 @@ class _LogsScreenState extends State<LogsScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text('امسح',
-                    style: GoogleFonts.cairo(color: Colors.red)),
+                child:
+                    Text('امسح', style: GoogleFonts.cairo(color: Colors.red)),
               ),
             ],
           ),
@@ -500,8 +587,8 @@ class _LogsScreenState extends State<LogsScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFB8C00).withAlpha(26),
                     borderRadius: BorderRadius.circular(20),
@@ -525,8 +612,8 @@ class _LogsScreenState extends State<LogsScreen>
                     if (log.stationName != null)
                       Text(
                         log.stationName!,
-                        style: GoogleFonts.cairo(
-                            color: Colors.grey, fontSize: 12),
+                        style:
+                            GoogleFonts.cairo(color: Colors.grey, fontSize: 12),
                       ),
                   ],
                 ),
@@ -537,10 +624,10 @@ class _LogsScreenState extends State<LogsScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildLogStat(Icons.speed, '${log.odometer} كم', Colors.blue),
-                _buildLogStat(Icons.local_gas_station,
-                    '${log.fuelAmount} لتر', const Color(0xFFFB8C00)),
-                _buildLogStat(Icons.attach_money,
-                    '${log.pricePerUnit} ج.م/ل', Colors.green),
+                _buildLogStat(Icons.local_gas_station, '${log.fuelAmount} لتر',
+                    const Color(0xFFFB8C00)),
+                _buildLogStat(Icons.attach_money, '${log.pricePerUnit} ج.م/ل',
+                    Colors.green),
                 if (log.calculatedEfficiency != null)
                   _buildLogStat(
                       Icons.show_chart,
@@ -555,12 +642,10 @@ class _LogsScreenState extends State<LogsScreen>
                 children: [
                   Text(
                     'خزان ممتلئ',
-                    style: GoogleFonts.cairo(
-                        color: Colors.green, fontSize: 12),
+                    style: GoogleFonts.cairo(color: Colors.green, fontSize: 12),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.check_circle,
-                      color: Colors.green, size: 14),
+                  const Icon(Icons.check_circle, color: Colors.green, size: 14),
                 ],
               ),
             ],
@@ -599,8 +684,8 @@ class _LogsScreenState extends State<LogsScreen>
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: Text('امسح',
-                    style: GoogleFonts.cairo(color: Colors.red)),
+                child:
+                    Text('امسح', style: GoogleFonts.cairo(color: Colors.red)),
               ),
             ],
           ),

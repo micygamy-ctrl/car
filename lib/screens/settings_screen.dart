@@ -57,7 +57,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           content: Text('تم حفظ الإعدادات! ✅', style: GoogleFonts.cairo()),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -177,7 +178,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             label: 'ميل',
                             value: 'mi',
                             groupValue: _selectedDistanceUnit,
-                            onTap: () => setState(() => _selectedDistanceUnit = 'mi'),
+                            onTap: () =>
+                                setState(() => _selectedDistanceUnit = 'mi'),
                             color: const Color(0xFFFB8C00),
                           ),
                           const SizedBox(width: 8),
@@ -185,7 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             label: 'كيلومتر',
                             value: 'km',
                             groupValue: _selectedDistanceUnit,
-                            onTap: () => setState(() => _selectedDistanceUnit = 'km'),
+                            onTap: () =>
+                                setState(() => _selectedDistanceUnit = 'km'),
                             color: const Color(0xFFFB8C00),
                           ),
                         ],
@@ -206,7 +209,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             label: 'جالون',
                             value: 'gal',
                             groupValue: _selectedFuelUnit,
-                            onTap: () => setState(() => _selectedFuelUnit = 'gal'),
+                            onTap: () =>
+                                setState(() => _selectedFuelUnit = 'gal'),
                             color: const Color(0xFFFB8C00),
                           ),
                           const SizedBox(width: 8),
@@ -214,7 +218,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             label: 'لتر',
                             value: 'L',
                             groupValue: _selectedFuelUnit,
-                            onTap: () => setState(() => _selectedFuelUnit = 'L'),
+                            onTap: () =>
+                                setState(() => _selectedFuelUnit = 'L'),
                             color: const Color(0xFFFB8C00),
                           ),
                         ],
@@ -273,14 +278,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, false),
-                                  child:
-                                      Text('لا', style: GoogleFonts.cairo()),
+                                  child: Text('لا', style: GoogleFonts.cairo()),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, true),
                                   child: Text('نعم',
-                                      style: GoogleFonts.cairo(
-                                          color: Colors.red)),
+                                      style:
+                                          GoogleFonts.cairo(color: Colors.red)),
                                 ),
                               ],
                             ),
@@ -466,7 +470,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: isSelected ? color : const Color(0xFFF5F7FA),
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected
-              ? [BoxShadow(color: color.withAlpha(76), blurRadius: 8, offset: const Offset(0, 4))]
+              ? [
+                  BoxShadow(
+                      color: color.withAlpha(76),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4))
+                ]
               : [],
         ),
         child: Text(

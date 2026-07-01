@@ -163,8 +163,7 @@ class _MapScreenState extends State<MapScreen> {
                     if (_currentLocation != null) {
                       controller.animateCamera(
                         CameraUpdate.newCameraPosition(
-                          CameraPosition(
-                              target: _currentLocation!, zoom: 14),
+                          CameraPosition(target: _currentLocation!, zoom: 14),
                         ),
                       );
                     }
@@ -251,8 +250,8 @@ class _MapScreenState extends State<MapScreen> {
               color: Colors.black.withAlpha(51),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -260,13 +259,12 @@ class _MapScreenState extends State<MapScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const CircularProgressIndicator(
-                          color: Color(0xFF1E88E5)),
+                      const CircularProgressIndicator(color: Color(0xFF1E88E5)),
                       const SizedBox(height: 12),
                       Text(
                         'جاري البحث في محيطك...',
-                        style: GoogleFonts.cairo(
-                            color: const Color(0xFF1E88E5)),
+                        style:
+                            GoogleFonts.cairo(color: const Color(0xFF1E88E5)),
                       ),
                     ],
                   ),
@@ -282,8 +280,8 @@ class _MapScreenState extends State<MapScreen> {
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
@@ -374,12 +372,9 @@ class _MapScreenState extends State<MapScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: const EdgeInsets.only(right: 8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF1E88E5)
-                    : Colors.white,
+                color: isSelected ? const Color(0xFF1E88E5) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -504,8 +499,7 @@ class _PlaceBottomSheet extends StatelessWidget {
     final themeColor =
         isGasStation ? const Color(0xFFFB8C00) : const Color(0xFF1E88E5);
     final typeLabel = isGasStation ? 'محطة وقود ⛽' : 'ورشة سيارات 🔧';
-    final typeIcon =
-        isGasStation ? Icons.local_gas_station : Icons.car_repair;
+    final typeIcon = isGasStation ? Icons.local_gas_station : Icons.car_repair;
 
     return Container(
       decoration: const BoxDecoration(
@@ -527,8 +521,7 @@ class _PlaceBottomSheet extends StatelessWidget {
           ),
 
           Padding(
-            padding:
-                const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -612,8 +605,7 @@ class _PlaceBottomSheet extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Icon(Icons.location_on,
-                        color: Colors.grey[500], size: 16),
+                    Icon(Icons.location_on, color: Colors.grey[500], size: 16),
                   ],
                 ),
 

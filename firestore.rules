@@ -1,0 +1,112 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function carPath(carId) {
+      return /databases/$(database)/documents/cars/$(carId);
+    }
+
+    function invitePath(code) {
+      return /databases/$(database)/documents/inviteCodes/$(code);
+    }
+
+    function isCarOwner(carId) {
+      return signedIn()
+        && exists(carPath(carId))
+        && get(carPath(carId)).data.ownerId == request.auth.uid;
+    }
+
+    function isCarMember(carId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/carMembers/$(carId + '_' + request.auth.uid));
+    }
+
+    function canAccessCar(carId) {
+      return isCarOwner(carId) || isCarMember(carId);
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /cars/{carId} {
+      allow read: if canAccessCar(carId);
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isCarOwner(carId);
+    }
+
+    match /carMembers/{memberId} {
+      allow read: if canAccessCar(resource.data.carId);
+
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.role == 'driver'
+        && memberId == request.resource.data.carId + '_' + request.auth.uid
+        && request.resource.data.inviteCode is string
+        && exists(invitePath(request.resource.data.inviteCode))
+        && get(invitePath(request.resource.data.inviteCode)).data.carId == request.resource.data.carId
+        && get(invitePath(request.resource.data.inviteCode)).data.createdBy != request.auth.uid
+        && request.time < get(invitePath(request.resource.data.inviteCode)).data.expiresAt;
+
+      allow update: if false;
+      allow delete: if isCarOwner(resource.data.carId);
+    }
+
+    match /inviteCodes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && isCarOwner(request.resource.data.carId);
+      allow update: if signedIn()
+        && resource.data.carId == request.resource.data.carId
+        && resource.data.createdBy == request.resource.data.createdBy
+        && resource.data.expiresAt == request.resource.data.expiresAt
+        && request.time < resource.data.expiresAt;
+      allow delete: if isCarOwner(resource.data.carId);
+    }
+
+    match /fuelLogs/{logId} {
+      allow read, delete: if canAccessCar(resource.data.carId);
+      allow create: if canAccessCar(request.resource.data.carId);
+      allow update: if canAccessCar(resource.data.carId)
+        && request.resource.data.carId == resource.data.carId;
+    }
+
+    match /serviceLogs/{logId} {
+      allow read, delete: if canAccessCar(resource.data.carId);
+      allow create: if canAccessCar(request.resource.data.carId);
+      allow update: if canAccessCar(resource.data.carId)
+        && request.resource.data.carId == resource.data.carId;
+    }
+
+    match /maintenanceItems/{itemId} {
+      allow read, delete: if canAccessCar(resource.data.carId);
+      allow create: if canAccessCar(request.resource.data.carId);
+      allow update: if canAccessCar(resource.data.carId)
+        && request.resource.data.carId == resource.data.carId;
+    }
+
+    match /carParts/{partId} {
+      allow read, delete: if canAccessCar(resource.data.carId);
+      allow create: if canAccessCar(request.resource.data.carId);
+      allow update: if canAccessCar(resource.data.carId)
+        && request.resource.data.carId == resource.data.carId;
+    }
+
+    match /trips/{tripId} {
+      allow read, delete: if canAccessCar(resource.data.carId);
+      allow create: if canAccessCar(request.resource.data.carId);
+      allow update: if canAccessCar(resource.data.carId)
+        && request.resource.data.carId == resource.data.carId;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

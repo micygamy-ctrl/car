@@ -78,7 +78,13 @@ class NotificationService {
     );
   }
 
-  int _carBaseId(String carId) => (carId.hashCode.abs() % 9000);
+  // ─── ID Scheme (لا تصادم) ─────────────────────────────────────────────────
+  // كل نوع تنبيه يستخدم hash منفصل من (carId + itemId)
+  // النطاق 1–999_999 محجوز للصيانة؛ 1_000_000+ لحركة السيارة
+  int _notifId(String carId, String category, String itemKey) {
+    final hash = (carId + category + itemKey).hashCode.abs() % 999999;
+    return hash == 0 ? 1 : hash;
+  }
 
   Future<void> checkOilChangeReminder({
     required String carId,
@@ -89,19 +95,19 @@ class NotificationService {
   }) async {
     final kmDriven = currentOdometer - lastOilChangeOdometer;
     final kmToNextOil = oilChangeInterval - kmDriven;
-    final baseId = _carBaseId(carId);
 
     if (kmToNextOil <= 0) {
       await showNotification(
-        id: baseId,
+        id: _notifId(carId, 'oil', 'overdue'),
         title: '🔴 حان وقت تغيير الزيت!',
         body: '$carName — لقد تجاوزت موعد تغيير الزيت، افحص سيارتك الآن!',
       );
     } else if (kmToNextOil <= 500) {
       await showNotification(
-        id: baseId + 1,
+        id: _notifId(carId, 'oil', 'soon'),
         title: '⚠️ تغيير الزيت قريب!',
-        body: '$carName — باقي ${kmToNextOil.toStringAsFixed(0)} كم لتغيير الزيت.',
+        body:
+            '$carName — باقي ${kmToNextOil.toStringAsFixed(0)} كم لتغيير الزيت.',
       );
     }
   }
@@ -112,8 +118,6 @@ class NotificationService {
     required List<ServiceLogModel> logs,
   }) async {
     final now = DateTime.now();
-    final baseId = _carBaseId(carId) + 100;
-    int offset = 0;
 
     for (final log in logs) {
       if (log.expiryDate == null) continue;
@@ -121,19 +125,20 @@ class NotificationService {
 
       if (daysLeft < 0) {
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'expiry_overdue', log.logId),
           title: '🔴 انتهت الصلاحية!',
-          body: '$carName — ${log.title} انتهت صلاحيته منذ ${daysLeft.abs()} يوم',
+          body:
+              '$carName — ${log.title} انتهت صلاحيته منذ ${daysLeft.abs()} يوم',
         );
       } else if (daysLeft <= 7) {
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'expiry_7d', log.logId),
           title: '🔴 ينتهي خلال أيام!',
           body: '$carName — ${log.title} ينتهي خلال $daysLeft يوم فقط!',
         );
       } else if (daysLeft <= 30) {
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'expiry_30d', log.logId),
           title: '⚠️ تذكير انتهاء صلاحية',
           body: '$carName — ${log.title} ينتهي خلال $daysLeft يوم',
         );
@@ -147,64 +152,58 @@ class NotificationService {
     required double currentOdometer,
     required List<ServiceLogModel> logs,
   }) async {
-    final baseId = _carBaseId(carId) + 200;
-    int offset = 0;
-
     for (final log in logs) {
       if (log.nextDueOdometer == null) continue;
       final kmLeft = log.nextDueOdometer! - currentOdometer;
 
       if (kmLeft <= 0) {
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'odo_overdue', log.logId),
           title: '🔴 حان موعد الصيانة!',
-          body: '$carName — ${log.title} متأخر ${kmLeft.abs().toStringAsFixed(0)} كم',
+          body:
+              '$carName — ${log.title} متأخر ${kmLeft.abs().toStringAsFixed(0)} كم',
         );
       } else if (kmLeft <= 500) {
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'odo_soon', log.logId),
           title: '⚠️ صيانة قريبة',
           body: '$carName — ${log.title} بعد ${kmLeft.toStringAsFixed(0)} كم',
         );
       }
     }
   }
+
   Future<void> checkCarPartsReminders({
     required String carId,
     required String carName,
     required double currentOdometer,
     required List<CarPartModel> parts,
   }) async {
-    final baseId = _carBaseId(carId) + 300;
-    int offset = 0;
-
     for (final part in parts) {
       final status = part.status(currentOdometer);
       if (status == PartStatus.overdue) {
         final kmLeft = part.kmRemaining(currentOdometer);
         final daysLeft = part.daysRemaining();
-        String detail = '';
-        if (kmLeft != null) {
-          detail = 'تجاوز الموعد بـ ${kmLeft.abs().toStringAsFixed(0)} كم';
-        } else if (daysLeft != null) {
-          detail = 'تجاوز الموعد بـ ${daysLeft.abs()} يوم';
-        }
+        final detail = kmLeft != null
+            ? 'تجاوز الموعد بـ ${kmLeft.abs().toStringAsFixed(0)} كم'
+            : daysLeft != null
+                ? 'تجاوز الموعد بـ ${daysLeft.abs()} يوم'
+                : '';
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'part_overdue', part.partId),
           title: '🔴 حان موعد صيانة!',
           body: '$carName — ${part.name}، $detail',
         );
       } else if (status == PartStatus.dueSoon) {
         final kmLeft = part.kmRemaining(currentOdometer);
         final daysLeft = part.daysRemaining();
-        String detail = '';
-        if (kmLeft != null) {
-          detail = 'باقي ${kmLeft.toStringAsFixed(0)} كم';
-        } else if (daysLeft != null) {
-          detail = 'باقي $daysLeft يوم';
-        }
+        final detail = kmLeft != null
+            ? 'باقي ${kmLeft.toStringAsFixed(0)} كم'
+            : daysLeft != null
+                ? 'باقي $daysLeft يوم'
+                : '';
         await showNotification(
-          id: baseId + offset++,
+          id: _notifId(carId, 'part_soon', part.partId),
           title: '⚠️ صيانة قريبة',
           body: '$carName — ${part.name}، $detail',
         );

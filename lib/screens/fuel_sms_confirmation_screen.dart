@@ -23,8 +23,7 @@ class FuelSmsConfirmationScreen extends StatefulWidget {
       _FuelSmsConfirmationScreenState();
 }
 
-class _FuelSmsConfirmationScreenState
-    extends State<FuelSmsConfirmationScreen> {
+class _FuelSmsConfirmationScreenState extends State<FuelSmsConfirmationScreen> {
   final FuelService _fuelService = FuelService();
   final CarService _carService = CarService();
   final _formKey = GlobalKey<FormState>();
@@ -61,7 +60,21 @@ class _FuelSmsConfirmationScreenState
 
   Future<void> _loadCurrency() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() => _prefs_currency = prefs.getString('currency') ?? 'EGP');
+    final currency = prefs.getString('currency') ?? 'EGP';
+    final lastPrice = prefs.getDouble('last_price_per_liter');
+    setState(() {
+      _prefs_currency = currency;
+      if (lastPrice != null && lastPrice > 0) {
+        _pricePerLiterController.text = lastPrice.toStringAsFixed(2);
+      }
+    });
+    _calcLiters();
+  }
+
+  Future<void> _savePricePerLiter(double price) async {
+    if (price <= 0) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('last_price_per_liter', price);
   }
 
   void _autoCalcPricePerLiter() {
@@ -73,9 +86,12 @@ class _FuelSmsConfirmationScreenState
     final amount = double.tryParse(_amountController.text);
     final price = double.tryParse(_pricePerLiterController.text);
     if (amount != null && price != null && price > 0) {
-      setState(() {
-        _litersController.text = (amount / price).toStringAsFixed(2);
-      });
+      final liters = amount / price;
+      if (_litersController.text != liters.toStringAsFixed(2)) {
+        setState(() {
+          _litersController.text = liters.toStringAsFixed(2);
+        });
+      }
     }
   }
 
@@ -102,8 +118,8 @@ class _FuelSmsConfirmationScreenState
 
     try {
       final uuid = const Uuid();
-      final odometer =
-          double.tryParse(_odometerController.text) ?? _selectedCar!.currentOdometer;
+      final odometer = double.tryParse(_odometerController.text) ??
+          _selectedCar!.currentOdometer;
       final fuelAmount = double.tryParse(_litersController.text) ?? 0;
       final pricePerUnit = double.tryParse(_pricePerLiterController.text) ?? 0;
       final totalCost = double.tryParse(_amountController.text) ?? 0;
@@ -125,6 +141,7 @@ class _FuelSmsConfirmationScreenState
       await Future.wait([
         _fuelService.addFuelLog(log),
         SmsService().markSmsAsProcessed(widget.smsResult.smsId),
+        if (pricePerUnit > 0) _savePricePerLiter(pricePerUnit),
         if (odometer > _selectedCar!.currentOdometer)
           _carService.updateCar(_selectedCar!.carId, {
             'currentOdometer': odometer,
@@ -135,7 +152,8 @@ class _FuelSmsConfirmationScreenState
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('تم تسجيل الوقود تلقائياً ✅', style: GoogleFonts.cairo()),
+          content:
+              Text('تم تسجيل الوقود تلقائياً ✅', style: GoogleFonts.cairo()),
           backgroundColor: const Color(0xFF43A047),
         ));
       }
@@ -204,8 +222,7 @@ class _FuelSmsConfirmationScreenState
                       ),
                       child: Text('تجاهل',
                           style: GoogleFonts.cairo(
-                              color: Colors.grey,
-                              fontWeight: FontWeight.bold)),
+                              color: Colors.grey, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -276,8 +293,7 @@ class _FuelSmsConfirmationScreenState
           const SizedBox(height: 12),
           _buildSmsInfoRow('البنك', widget.smsResult.bankName),
           _buildSmsInfoRow('المحطة', widget.smsResult.merchantName),
-          _buildSmsInfoRow(
-              'المبلغ',
+          _buildSmsInfoRow('المبلغ',
               '${widget.smsResult.amountEGP.toStringAsFixed(2)} $_prefs_currency'),
           const Divider(color: Colors.white24, height: 20),
           Text(
@@ -388,8 +404,7 @@ class _FuelSmsConfirmationScreenState
             label: 'المبلغ الإجمالي ($_prefs_currency)',
             icon: Icons.attach_money,
             hint: 'من الرسالة البنكية',
-            validator: (v) =>
-                v == null || v.isEmpty ? 'أدخل المبلغ' : null,
+            validator: (v) => v == null || v.isEmpty ? 'أدخل المبلغ' : null,
           ),
           // سعر اللتر
           _buildField(
@@ -412,7 +427,7 @@ class _FuelSmsConfirmationScreenState
               Switch(
                 value: _isFullTank,
                 onChanged: (v) => setState(() => _isFullTank = v),
-                activeThumbColor: const Color(0xFF43A047),
+                activeColor: const Color(0xFF43A047),
               ),
               Text('خزان ممتلئ؟',
                   style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
@@ -463,9 +478,7 @@ class _FuelSmsConfirmationScreenState
             children: [
               Text(title,
                   style: GoogleFonts.cairo(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: color)),
+                      fontSize: 16, fontWeight: FontWeight.bold, color: color)),
               const SizedBox(width: 8),
               Icon(icon, color: color, size: 20),
             ],
@@ -501,8 +514,7 @@ class _FuelSmsConfirmationScreenState
           fillColor: const Color(0xFFF5F7FA),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: Color(0xFF1E88E5), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
           ),
         ),
         validator: validator,
@@ -510,4 +522,3 @@ class _FuelSmsConfirmationScreenState
     );
   }
 }
-

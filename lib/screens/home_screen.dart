@@ -45,7 +45,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user != null) {
       ReminderService().runDailyCheck(user.uid);
       // فحص SMS بعد ثانيتين حتى تكتمل الشاشة
-      Future.delayed(const Duration(seconds: 2), () => _checkForFuelSms(user.uid));
+      Future.delayed(
+          const Duration(seconds: 2), () => _checkForFuelSms(user.uid));
     }
   }
 
@@ -88,17 +89,26 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = authService.currentUser;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF0F4F8),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 160,
+            expandedHeight: 170,
             floating: false,
             pinned: true,
-            backgroundColor: const Color(0xFF1E88E5),
+            elevation: 0,
+            backgroundColor: const Color(0xFF0F172A),
             actions: [
               IconButton(
-                icon: const Icon(Icons.settings, color: Colors.white),
+                icon: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.settings_rounded,
+                      color: Colors.white, size: 20),
+                ),
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -107,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+              const SizedBox(width: 8),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
@@ -114,68 +125,128 @@ class _HomeScreenState extends State<HomeScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
+                    colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
                   ),
                 ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: -40,
+                      right: -40,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF38BDF8).withAlpha(18),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: -20,
+                      left: 20,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF38BDF8).withAlpha(10),
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.logout,
-                                  color: Colors.white70),
-                              onPressed: () async {
-                                await authService.logout();
-                                if (context.mounted) {
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(
-                                        builder: (_) => const LoginScreen()),
-                                    (route) => false,
-                                  );
-                                }
-                              },
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'مرحباً 👋',
-                                  style: GoogleFonts.cairo(
-                                    color: Colors.white70,
-                                    fontSize: 14,
+                                GestureDetector(
+                                  onTap: () async {
+                                    await authService.logout();
+                                    if (context.mounted) {
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(
+                                            builder: (_) =>
+                                                const LoginScreen()),
+                                        (route) => false,
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withAlpha(15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: Colors.white.withAlpha(25)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Text('خروج',
+                                            style: GoogleFonts.cairo(
+                                                color: Colors.white60,
+                                                fontSize: 12)),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.logout_rounded,
+                                            color: Colors.white60, size: 14),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  user?.email ?? '',
-                                  style: GoogleFonts.cairo(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'أهلاً بيك 👋',
+                                      style: GoogleFonts.cairo(
+                                        color: const Color(0xFF38BDF8),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      user?.displayName ??
+                                          user?.email?.split('@')[0] ??
+                                          'مستخدم',
+                                      style: GoogleFonts.cairo(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
-            title: Text(
-              'مساعد السيارة الذكي 🚗',
-              style: GoogleFonts.cairo(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.directions_car_rounded,
+                    color: Color(0xFF38BDF8), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'سياراتي',
+                  style: GoogleFonts.cairo(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
             ),
             centerTitle: true,
           ),
@@ -197,34 +268,93 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: 120,
-                          height: 120,
+                          width: 110,
+                          height: 110,
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF1E88E5).withAlpha(26),
-                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF38BDF8), Color(0xFF0EA5E9)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF38BDF8).withAlpha(80),
+                                blurRadius: 24,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
                           child: const Icon(
-                            Icons.directions_car,
-                            size: 60,
-                            color: Color(0xFF1E88E5),
+                            Icons.directions_car_rounded,
+                            size: 58,
+                            color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 28),
                         Text(
-                          'مفيش سيارات لسه!',
+                          'لا توجد سيارات بعد',
                           style: GoogleFonts.cairo(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1E88E5),
+                            color: const Color(0xFF0F172A),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'اضغط + عشان تضيف سيارتك الأولى',
+                          'اضغط + لإضافة سيارتك الأولى',
                           style: GoogleFonts.cairo(
-                            fontSize: 16,
-                            color: Colors.grey,
+                            fontSize: 15,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const AddCarScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.add_rounded),
+                                  label: Text(
+                                    'إضافة سيارة',
+                                    style: GoogleFonts.cairo(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const JoinCarScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.vpn_key_rounded),
+                                  label: Text(
+                                    'الانضمام بكود دعوة',
+                                    style: GoogleFonts.cairo(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -253,10 +383,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddOptions(context),
-        backgroundColor: const Color(0xFF1E88E5),
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: const Color(0xFF38BDF8),
+        foregroundColor: const Color(0xFF0F172A),
+        elevation: 4,
+        icon: const Icon(Icons.add_rounded, size: 22),
+        label: Text('إضافة سيارة',
+            style:
+                GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
       ),
     );
   }
@@ -289,20 +424,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: const Color(0xFF1E88E5).withAlpha(20),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child:
-                      const Icon(Icons.add, color: Color(0xFF1E88E5)),
+                  child: const Icon(Icons.add, color: Color(0xFF1E88E5)),
                 ),
                 title: Text('إضافة سيارة جديدة',
                     style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 subtitle: Text('أضف سيارتك الخاصة',
-                    style:
-                        GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const AddCarScreen()));
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const AddCarScreen()));
                 },
               ),
               ListTile(
@@ -312,20 +443,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: const Color(0xFF43A047).withAlpha(20),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.vpn_key,
-                      color: Color(0xFF43A047)),
+                  child: const Icon(Icons.vpn_key, color: Color(0xFF43A047)),
                 ),
                 title: Text('انضم لسيارة',
                     style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 subtitle: Text('ادخل كود الدعوة من المالك',
-                    style:
-                        GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 12)),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const JoinCarScreen()));
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const JoinCarScreen()));
                 },
               ),
               const SizedBox(height: 8),
@@ -345,7 +472,8 @@ class _CarCard extends StatefulWidget {
   final BackgroundTrackingService bgService;
   final String role;
 
-  const _CarCard({required this.car, required this.bgService, required this.role});
+  const _CarCard(
+      {required this.car, required this.bgService, required this.role});
 
   @override
   State<_CarCard> createState() => _CarCardState();
@@ -486,14 +614,15 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 10),
               Text('هل تريد تحديث عداد السيارة؟',
-                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87)),
+                  style:
+                      GoogleFonts.cairo(fontSize: 13, color: Colors.black87)),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child:
-                  Text('لا، شكرًا', style: GoogleFonts.cairo(color: Colors.grey)),
+              child: Text('لا، شكرًا',
+                  style: GoogleFonts.cairo(color: Colors.grey)),
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -544,8 +673,8 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
               const Text('🚗  '),
@@ -617,8 +746,9 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
                     // بعد انتهاء الرحلة، أعد المراقبة السلبية
                     // عشان نقدر نكشف حركة جديدة في المستقبل
                     if (mounted) {
-                      Future.delayed(const Duration(seconds: 30),
-                          () { if (mounted) _startPassiveMonitor(); });
+                      Future.delayed(const Duration(seconds: 30), () {
+                        if (mounted) _startPassiveMonitor();
+                      });
                     }
                   }
                   return;
@@ -665,8 +795,9 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
           ),
         );
         if (mounted) {
-          Future.delayed(const Duration(seconds: 30),
-              () { if (mounted) _startPassiveMonitor(); });
+          Future.delayed(const Duration(seconds: 30), () {
+            if (mounted) _startPassiveMonitor();
+          });
         }
         return;
       }
@@ -713,66 +844,76 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
-          ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1E88E5).withAlpha(102),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: Colors.black.withAlpha(18),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            // ─── Header داكن ───
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8),
+                  topRight: Radius.circular(8),
+                ),
+              ),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(51),
+                          color: Colors.white.withAlpha(20),
                           borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: Colors.white.withAlpha(30), width: 1),
                         ),
                         child: Text(
                           car.licensePlate,
                           style: GoogleFonts.cairo(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
                       ),
                       if (widget.role == 'driver') ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF43A047).withAlpha(200),
+                            color: const Color(0xFF22C55E).withAlpha(180),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.person,
+                              const Icon(Icons.person_rounded,
                                   color: Colors.white, size: 12),
                               const SizedBox(width: 4),
-                              Text(
-                                'سواق',
-                                style: GoogleFonts.cairo(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
-                              ),
+                              Text('سواق',
+                                  style: GoogleFonts.cairo(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -785,7 +926,7 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
                       Text(
                         '${_capitalize(car.make)} ${_capitalize(car.model)}',
                         style: GoogleFonts.cairo(
-                          fontSize: 22,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -793,162 +934,168 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
                       Text(
                         '${car.year}',
                         style: GoogleFonts.cairo(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
+                            color: const Color(0xFF38BDF8), fontSize: 13),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Container(height: 1, color: Colors.white.withAlpha(51)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ),
+            // ─── Body الكرت ───
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
                 children: [
-                  if (oilSoon)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withAlpha(204),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.warning,
-                              color: Colors.white, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            'تغيير الزيت قريب!',
-                            style: GoogleFonts.cairo(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withAlpha(204),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle,
-                              color: Colors.white, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            'الزيت تمام',
-                            style: GoogleFonts.cairo(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(Icons.speed,
-                          color: Colors.white70, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${car.currentOdometer.toStringAsFixed(0)} كم',
-                        style: GoogleFonts.cairo(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      // حالة الزيت
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: oilSoon
+                              ? Colors.red.withAlpha(20)
+                              : Colors.green.withAlpha(20),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: oilSoon
+                                ? Colors.red.withAlpha(60)
+                                : Colors.green.withAlpha(60),
+                          ),
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              oilSoon
+                                  ? Icons.warning_rounded
+                                  : Icons.check_circle_rounded,
+                              color: oilSoon ? Colors.red : Colors.green,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              oilSoon ? 'تغيير الزيت قريب!' : 'الزيت تمام',
+                              style: GoogleFonts.cairo(
+                                color: oilSoon ? Colors.red : Colors.green,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // العداد
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0EA5E9).withAlpha(20),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.speed_rounded,
+                                color: Color(0xFF0EA5E9), size: 18),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${car.currentOdometer.toStringAsFixed(0)} كم',
+                                style: GoogleFonts.cairo(
+                                  color: const Color(0xFF0F172A),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text('العداد الحالي',
+                                  style: GoogleFonts.cairo(
+                                      color: Colors.grey[500], fontSize: 11)),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              // زرار الموقع
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => CarLocationScreen(car: car)),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withAlpha(38),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.my_location, color: Colors.white),
-                  label: Text(
-                    'أين عربيتي؟',
-                    style: GoogleFonts.cairo(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 12),
+                  // زرار الموقع
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  CarLocationScreen(car: car)),
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0F172A),
+                        side: BorderSide(
+                            color: Colors.grey.withAlpha(60), width: 1),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      icon: const Icon(Icons.my_location_rounded,
+                          size: 16, color: Color(0xFF0EA5E9)),
+                      label: Text('أين عربيتي؟',
+                          style: GoogleFonts.cairo(
+                              fontWeight: FontWeight.w600, fontSize: 13)),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              // ─── منطقة التتبع ───
-              ValueListenableBuilder<Set<String>>(
-                valueListenable: widget.bgService.activeTrackings,
-                builder: (context, active, _) {
-                  final isTracking = active.contains(car.carId);
+                  const SizedBox(height: 10),
+                  // ─── منطقة التتبع ───
+                  ValueListenableBuilder<Set<String>>(
+                    valueListenable: widget.bgService.activeTrackings,
+                    builder: (context, active, _) {
+                      final isTracking = active.contains(car.carId);
 
-                  if (!isTracking) {
-                    // زرار بدء التتبع
-                    return SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: ElevatedButton.icon(
-                        onPressed: _handleManualTracking,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF1E88E5),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
-                        ),
-                        icon: const Icon(Icons.location_searching,
-                            color: Color(0xFF1E88E5)),
-                        label: Text('تشغيل تتبع العداد',
-                            style: GoogleFonts.cairo(
-                                color: const Color(0xFF1E88E5),
-                                fontWeight: FontWeight.bold)),
-                      ),
-                    );
-                  }
+                      if (!isTracking) {
+                        return SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: ElevatedButton.icon(
+                            onPressed: _handleManualTracking,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F172A),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.location_searching,
+                                color: Color(0xFF38BDF8), size: 18),
+                            label: Text('تشغيل تتبع العداد',
+                                style: GoogleFonts.cairo(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13)),
+                          ),
+                        );
+                      }
 
-                  // ─── عداد مرئي أثناء التتبع ───
-                  return ValueListenableBuilder<Map<String, LiveTrackingData>>(
-                    valueListenable: widget.bgService.liveTrackingData,
-                    builder: (context, liveMap, _) {
-                      final live =
-                          liveMap[car.carId] ?? LiveTrackingData.zero;
-                      return _LiveTrackingCard(
-                        live: live,
-                        onStop: _handleManualTracking,
+                      return ValueListenableBuilder<
+                          Map<String, LiveTrackingData>>(
+                        valueListenable: widget.bgService.liveTrackingData,
+                        builder: (context, liveMap, _) {
+                          final live =
+                              liveMap[car.carId] ?? LiveTrackingData.zero;
+                          return _LiveTrackingCard(
+                            live: live,
+                            onStop: _handleManualTracking,
+                          );
+                        },
                       );
                     },
-                  );
-                },
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -961,7 +1108,7 @@ class _CarCardState extends State<_CarCard> with WidgetsBindingObserver {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  بطاقة التتبع المرئي (تظهر بدل زر التتبع أثناء الجلسة)
+//  بطاقة التتبع المرئي (تظهر بدل زر التتبع أثناء الجل��ة)
 // ══════════════════════════════════════════════════════════════
 class _LiveTrackingCard extends StatelessWidget {
   final LiveTrackingData live;
@@ -1104,7 +1251,9 @@ class _InfoChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label,
             style: GoogleFonts.cairo(
-                color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -1169,8 +1318,7 @@ class _SpeedometerPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // المركز في أسفل المنتصف
     final center = Offset(size.width / 2, size.height);
-    final radius =
-        math.min(size.width / 2, size.height) * 0.88;
+    final radius = math.min(size.width / 2, size.height) * 0.88;
 
     // القوس يبدأ من اليسار (π) ويسير باتجاه عقارب الساعة (sweep +π)
     // مرورًا بالأعلى وصولًا لليمين (0)
@@ -1183,12 +1331,8 @@ class _SpeedometerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = _strokeW
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-        bgPaint);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle,
+        sweepAngle, false, bgPaint);
 
     // ─── مناطق اللون ───
     void _zone(double from, double to, Color color) {
@@ -1199,12 +1343,8 @@ class _SpeedometerPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round;
       final start = startAngle + (from / _maxSpeed) * sweepAngle;
       final sweep = ((to - from) / _maxSpeed) * sweepAngle;
-      canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius),
-          start,
-          sweep,
-          false,
-          paint);
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start,
+          sweep, false, paint);
     }
 
     _zone(0, 60, const Color(0xFF43A047).withAlpha(130));
@@ -1233,8 +1373,7 @@ class _SpeedometerPainter extends CustomPainter {
     }
 
     // ─── الإبرة ───
-    final needleAngle =
-        startAngle + (clampedSpeed / _maxSpeed) * sweepAngle;
+    final needleAngle = startAngle + (clampedSpeed / _maxSpeed) * sweepAngle;
     final needleEnd = Offset(
       center.dx + (radius * 0.72) * math.cos(needleAngle),
       center.dy + (radius * 0.72) * math.sin(needleAngle),
@@ -1247,8 +1386,7 @@ class _SpeedometerPainter extends CustomPainter {
 
     // ─── نقطة المركز ───
     canvas.drawCircle(center, 5, Paint()..color = Colors.white);
-    canvas.drawCircle(
-        center, 3, Paint()..color = const Color(0xFF1E88E5));
+    canvas.drawCircle(center, 3, Paint()..color = const Color(0xFF1E88E5));
 
     // ─── علامات السرعة (0، 60، 120، 160) ───
     _drawTick(canvas, center, radius, startAngle, 0);
@@ -1257,8 +1395,8 @@ class _SpeedometerPainter extends CustomPainter {
     _drawTick(canvas, center, radius, startAngle, 160);
   }
 
-  void _drawTick(Canvas canvas, Offset center, double radius,
-      double startAngle, double speed) {
+  void _drawTick(Canvas canvas, Offset center, double radius, double startAngle,
+      double speed) {
     final angle = startAngle + (speed / _maxSpeed) * math.pi;
     final inner = Offset(
       center.dx + (radius - 14) * math.cos(angle),

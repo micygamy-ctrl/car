@@ -32,34 +32,49 @@ class RoleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  static const Duration inviteCodeValidity = Duration(days: 7);
   static const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
   String _generateCode() {
-    final rand = Random();
+    final rand = Random.secure();
     return List.generate(6, (_) => _chars[rand.nextInt(_chars.length)]).join();
   }
 
   Future<String?> getUserRole(String carId, String userId) async {
     final carDoc = await _firestore.collection('cars').doc(carId).get();
     if (carDoc.exists && carDoc.data()?['ownerId'] == userId) return 'admin';
-    final memberDoc = await _firestore
-        .collection('carMembers')
-        .doc('${carId}_$userId')
-        .get();
+    final memberDoc =
+        await _firestore.collection('carMembers').doc('${carId}_$userId').get();
     if (memberDoc.exists) return memberDoc.data()?['role'] as String?;
     return null;
   }
 
   Future<String> generateInviteCode(String carId, String carName) async {
-    final code = _generateCode();
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('يجب تسجيل الدخول أولاً');
+
+    final carDoc = await _firestore.collection('cars').doc(carId).get();
+    if (!carDoc.exists || carDoc.data()?['ownerId'] != user.uid) {
+      throw Exception('غير مسموح بإنشاء كود دعوة لهذه السيارة');
+    }
+
+    String code = _generateCode();
+    for (var attempt = 0; attempt < 5; attempt++) {
+      final existing =
+          await _firestore.collection('inviteCodes').doc(code).get();
+      if (!existing.exists) break;
+      if (attempt == 4) throw Exception('تعذر إنشاء كود دعوة، حاول مرة أخرى');
+      code = _generateCode();
+    }
+
     await _firestore.collection('inviteCodes').doc(code).set({
       'carId': carId,
       'carName': carName,
-      'createdBy': _auth.currentUser?.uid ?? '',
+      'createdBy': user.uid,
       'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(
-          DateTime.now().add(const Duration(hours: 24))),
-      'isUsed': false,
+      'expiresAt': Timestamp.fromDate(DateTime.now().add(inviteCodeValidity)),
+      'usedBy': [],
+      'usageCount': 0,
     });
     return code;
   }
@@ -74,17 +89,13 @@ class RoleService {
     if (!codeDoc.exists) throw Exception('الكود غير صحيح');
 
     final data = codeDoc.data()!;
-    if (data['isUsed'] == true) throw Exception('الكود مستخدم بالفعل');
 
     final expiresAt = (data['expiresAt'] as Timestamp).toDate();
-    if (DateTime.now().isAfter(expiresAt)) throw Exception('انتهت صلاحية الكود');
+    if (DateTime.now().isAfter(expiresAt))
+      throw Exception('انتهت صلاحية الكود');
 
     final carId = data['carId'] as String;
 
-    // ملحوظة: متعمدين عدم قراءة وثيقة cars هنا — قواعد الأمان الجديدة
-    // (firestore.rules) ما بتسمحش لمستخدم غير مرتبط بالسيارة بقراءتها.
-    // التحقق من إن المستخدم هو نفسه مالك السيارة بيتم عبر createdBy
-    // المُخزّن وقت إنشاء كود الدعوة.
     if (data['createdBy'] == user.uid) {
       throw Exception('أنت بالفعل مالك هذه السيارة');
     }
@@ -101,6 +112,7 @@ class RoleService {
       {
         'carId': carId,
         'userId': user.uid,
+        'inviteCode': upperCode,
         'role': 'driver',
         'name': user.displayName ?? user.email ?? '',
         'email': user.email ?? '',
@@ -109,7 +121,10 @@ class RoleService {
     );
     batch.update(
       _firestore.collection('inviteCodes').doc(upperCode),
-      {'isUsed': true, 'usedBy': user.uid},
+      {
+        'usedBy': FieldValue.arrayUnion([user.uid]),
+        'usageCount': FieldValue.increment(1),
+      },
     );
     await batch.commit();
 
@@ -126,9 +141,6 @@ class RoleService {
   }
 
   Future<void> removeMember(String carId, String userId) async {
-    await _firestore
-        .collection('carMembers')
-        .doc('${carId}_$userId')
-        .delete();
+    await _firestore.collection('carMembers').doc('${carId}_$userId').delete();
   }
 }

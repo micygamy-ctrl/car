@@ -126,7 +126,8 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     }
   }
 
-  void _showTripSummary(TrackingResult result, DateTime endTime, double newOdometer) {
+  void _showTripSummary(
+      TrackingResult result, DateTime endTime, double newOdometer) {
     final duration = endTime.difference(_startTime);
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
@@ -144,23 +145,25 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
               const Text('✅  '),
               Expanded(
                 child: Text('تمت الرحلة!',
-                    style:
-                        GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _summaryRow(Icons.route, 'المسافة',
+              _summaryRow(
+                  Icons.route,
+                  'المسافة',
                   '${result.distanceKm.toStringAsFixed(2)} كم',
                   const Color(0xFF1E88E5)),
               const SizedBox(height: 12),
-              _summaryRow(Icons.timer, 'المدة',
-                  '${minutes}د ${seconds}ث',
+              _summaryRow(Icons.timer, 'المدة', '${minutes}د ${seconds}ث',
                   const Color(0xFF43A047)),
               const SizedBox(height: 12),
-              _summaryRow(Icons.speed, 'العداد الجديد',
+              _summaryRow(
+                  Icons.speed,
+                  'العداد الجديد',
                   '${newOdometer.toStringAsFixed(1)} كم',
                   const Color(0xFF8E24AA)),
             ],
@@ -186,14 +189,13 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
     );
   }
 
-  Widget _summaryRow(
-      IconData icon, String label, String value, Color color) {
+  Widget _summaryRow(IconData icon, String label, String value, Color color) {
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: color.withAlpha(25), shape: BoxShape.circle),
+          decoration:
+              BoxDecoration(color: color.withAlpha(25), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 20),
         ),
         const SizedBox(width: 12),
@@ -281,13 +283,13 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
               children: [
                 // شريط العلوي
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back,
-                            color: Colors.white70),
+                        icon:
+                            const Icon(Icons.arrow_back, color: Colors.white70),
                         onPressed: () async {
                           final should = await _onWillPop();
                           if (should && context.mounted) {
@@ -331,8 +333,8 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white.withAlpha(20),
-                    border: Border.all(
-                        color: Colors.white.withAlpha(80), width: 3),
+                    border:
+                        Border.all(color: Colors.white.withAlpha(80), width: 3),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -385,12 +387,10 @@ class _ActiveTripScreenState extends State<ActiveTripScreen> {
                       width: double.infinity,
                       height: 60,
                       child: ElevatedButton.icon(
-                        onPressed:
-                            (_isEnding || !_isStarted) ? null : _endTrip,
+                        onPressed: (_isEnding || !_isStarted) ? null : _endTrip,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isEnding
-                              ? Colors.grey
-                              : const Color(0xFFE53935),
+                          backgroundColor:
+                              _isEnding ? Colors.grey : const Color(0xFFE53935),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16)),
                           elevation: 4,

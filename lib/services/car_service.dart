@@ -43,7 +43,8 @@ class CarService {
         .snapshots()
         .listen((snap) {
       ownedCars = snap.docs
-          .map((d) => CarWithRole(car: CarModel.fromMap(d.data()), role: 'admin'))
+          .map((d) =>
+              CarWithRole(car: CarModel.fromMap(d.data()), role: 'admin'))
           .toList();
       emit();
     });
@@ -53,25 +54,23 @@ class CarService {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .asyncMap((snap) async {
-          final List<CarWithRole> result = [];
-          for (final doc in snap.docs) {
-            final data = doc.data();
-            final carId = data['carId'] as String;
-            final carDoc =
-                await _firestore.collection('cars').doc(carId).get();
-            if (carDoc.exists) {
-              result.add(CarWithRole(
-                car: CarModel.fromMap(carDoc.data()!),
-                role: data['role'] as String? ?? 'driver',
-              ));
-            }
-          }
-          return result;
-        })
-        .listen((result) {
-          memberCars = result;
-          emit();
-        });
+      final List<CarWithRole> result = [];
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final carId = data['carId'] as String;
+        final carDoc = await _firestore.collection('cars').doc(carId).get();
+        if (carDoc.exists) {
+          result.add(CarWithRole(
+            car: CarModel.fromMap(carDoc.data()!),
+            role: data['role'] as String? ?? 'driver',
+          ));
+        }
+      }
+      return result;
+    }).listen((result) {
+      memberCars = result;
+      emit();
+    });
 
     controller.onCancel = () {
       ownedSub.cancel();
@@ -116,10 +115,8 @@ class CarService {
 
       // جلب كل المجموعات بالتوازي
       final snaps = await Future.wait(
-        collections.map((col) => _firestore
-            .collection(col)
-            .where('carId', isEqualTo: carId)
-            .get()),
+        collections.map((col) =>
+            _firestore.collection(col).where('carId', isEqualTo: carId).get()),
       );
 
       // حذف كل الوثائق في batch واحد

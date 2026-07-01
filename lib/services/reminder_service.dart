@@ -12,30 +12,58 @@ class ReminderService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // بيتحقق إذا كان اليوم اتعملتله فحص قبل كده
-  Future<bool> _shouldCheck() async {
+  // بيتحقق إذا كان اليوم اتعملتله فحص قبل كده — key خاص بكل مستخدم
+  Future<bool> _shouldCheck(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final lastCheck = prefs.getString('last_reminder_check');
+    final key = 'last_reminder_check_$userId';
+    final lastCheck = prefs.getString(key);
     final today = DateTime.now().toIso8601String().substring(0, 10);
     if (lastCheck == today) return false;
-    await prefs.setString('last_reminder_check', today);
+    await prefs.setString(key, today);
     return true;
   }
 
-  // الدالة الرئيسية — بتفحص كل السيارات بتاعت المستخدم
+  // الدالة الرئيسية — بتفحص كل السيارات (مملوكة + منضم إليها كسائق)
   Future<void> runDailyCheck(String userId) async {
-    final shouldCheck = await _shouldCheck();
+    final shouldCheck = await _shouldCheck(userId);
     if (!shouldCheck) return;
 
     try {
-      // جلب كل السيارات بتاعت المستخدم
-      final carsSnapshot = await _firestore
-          .collection('cars')
-          .where('ownerId', isEqualTo: userId)
-          .get();
+      // جلب السيارات المملوكة + السيارات اللي المستخدم سواق فيها بالتوازي
+      final results = await Future.wait([
+        _firestore.collection('cars').where('ownerId', isEqualTo: userId).get(),
+        _firestore
+            .collection('carMembers')
+            .where('userId', isEqualTo: userId)
+            .get(),
+      ]);
 
-      for (final doc in carsSnapshot.docs) {
+      final Set<String> checkedCarIds = {};
+      final List<CarModel> allCars = [];
+
+      // السيارات المملوكة
+      for (final doc in results[0].docs) {
         final car = CarModel.fromMap(doc.data());
+        if (checkedCarIds.add(car.carId)) allCars.add(car);
+      }
+
+      // السيارات اللي انضملها كسائق
+      final memberDocs = results[1].docs;
+      if (memberDocs.isNotEmpty) {
+        final carSnaps = await Future.wait(
+          memberDocs.map((d) {
+            final carId = d.data()['carId'] as String? ?? '';
+            return _firestore.collection('cars').doc(carId).get();
+          }),
+        );
+        for (final snap in carSnaps) {
+          if (!snap.exists) continue;
+          final car = CarModel.fromMap(snap.data()!);
+          if (checkedCarIds.add(car.carId)) allCars.add(car);
+        }
+      }
+
+      for (final car in allCars) {
         await _checkCar(car);
       }
     } catch (e) {

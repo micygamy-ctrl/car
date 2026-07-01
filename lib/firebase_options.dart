@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'car-app-7872f.firebasestorage.app',
     measurementId: 'G-44QGYBFCW3',
   );
-
 }

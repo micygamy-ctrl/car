@@ -64,8 +64,7 @@ class ManageDriversScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.people_outline,
-                              size: 80,
-                              color: Colors.grey.withAlpha(100)),
+                              size: 80, color: Colors.grey.withAlpha(100)),
                           const SizedBox(height: 16),
                           Text(
                             'مفيش سواقين لسه',
@@ -110,9 +109,7 @@ class ManageDriversScreen extends StatelessWidget {
                             backgroundColor:
                                 const Color(0xFF1E88E5).withAlpha(30),
                             child: Text(
-                              m.name.isNotEmpty
-                                  ? m.name[0].toUpperCase()
-                                  : '?',
+                              m.name.isNotEmpty ? m.name[0].toUpperCase() : '?',
                               style: GoogleFonts.cairo(
                                   color: const Color(0xFF1E88E5),
                                   fontWeight: FontWeight.bold),
@@ -120,8 +117,8 @@ class ManageDriversScreen extends StatelessWidget {
                           ),
                           title: Text(
                             m.name.isNotEmpty ? m.name : m.email,
-                            style: GoogleFonts.cairo(
-                                fontWeight: FontWeight.bold),
+                            style:
+                                GoogleFonts.cairo(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,8 +178,7 @@ class ManageDriversScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('حدث خطأ، حاول مرة أخرى',
-              style: GoogleFonts.cairo()),
+          content: Text('حدث خطأ، حاول مرة أخرى', style: GoogleFonts.cairo()),
           backgroundColor: Colors.red,
         ));
       }
@@ -209,13 +205,13 @@ class ManageDriversScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E88E5).withAlpha(20),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: const Color(0xFF1E88E5).withAlpha(80)),
+                  border:
+                      Border.all(color: const Color(0xFF1E88E5).withAlpha(80)),
                 ),
                 child: Text(
                   code,
@@ -229,9 +225,8 @@ class ManageDriversScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'صالح لمدة 24 ساعة',
-                style:
-                    GoogleFonts.cairo(color: Colors.orange, fontSize: 12),
+                'صالح لمدة 7 أيام',
+                style: GoogleFonts.cairo(color: Colors.orange, fontSize: 12),
               ),
             ],
           ),
@@ -240,8 +235,7 @@ class ManageDriversScreen extends StatelessWidget {
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: code));
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('تم نسخ الكود! 📋',
-                      style: GoogleFonts.cairo()),
+                  content: Text('تم نسخ الكود! 📋', style: GoogleFonts.cairo()),
                   backgroundColor: const Color(0xFF43A047),
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 2),
@@ -256,8 +250,8 @@ class ManageDriversScreen extends StatelessWidget {
                   backgroundColor: const Color(0xFF1E88E5),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
-              child: Text('تمام',
-                  style: GoogleFonts.cairo(color: Colors.white)),
+              child:
+                  Text('تمام', style: GoogleFonts.cairo(color: Colors.white)),
             ),
           ],
         ),
@@ -265,8 +259,8 @@ class ManageDriversScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmRemove(BuildContext context, RoleService roleService,
-      CarMember member) async {
+  Future<void> _confirmRemove(
+      BuildContext context, RoleService roleService, CarMember member) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => Directionality(
@@ -302,8 +296,7 @@ class ManageDriversScreen extends StatelessWidget {
       } catch (_) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('حدث خطأ، حاول مرة أخرى', style: GoogleFonts.cairo()),
+            content: Text('حدث خطأ، حاول مرة أخرى', style: GoogleFonts.cairo()),
             backgroundColor: Colors.red,
           ));
         }

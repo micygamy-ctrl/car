@@ -47,8 +47,7 @@ class TripsHistoryScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'ابدأ رحلتك الأولى من داشبورد السيارة',
-                    style: GoogleFonts.cairo(
-                        color: Colors.grey, fontSize: 14),
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 14),
                   ),
                 ],
               ),
@@ -69,14 +68,16 @@ class TripsHistoryScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Row(
                   children: [
-                    _totalChip(Icons.route,
-                        '${totalKm.toStringAsFixed(1)} كم', 'إجمالي المسافة'),
+                    _totalChip(Icons.route, '${totalKm.toStringAsFixed(1)} كم',
+                        'إجمالي المسافة'),
                     const SizedBox(width: 12),
-                    _totalChip(Icons.directions_car,
-                        '${trips.length}', 'عدد الرحلات'),
+                    _totalChip(
+                        Icons.directions_car, '${trips.length}', 'عدد الرحلات'),
                     const SizedBox(width: 12),
-                    _totalChip(Icons.timer,
-                        '${totalMins ~/ 60}س ${totalMins % 60}د', 'إجمالي الوقت'),
+                    _totalChip(
+                        Icons.timer,
+                        '${totalMins ~/ 60}س ${totalMins % 60}د',
+                        'إجمالي الوقت'),
                   ],
                 ),
               ),
@@ -114,8 +115,7 @@ class TripsHistoryScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 14)),
             Text(label,
-                style: GoogleFonts.cairo(
-                    color: Colors.white70, fontSize: 10)),
+                style: GoogleFonts.cairo(color: Colors.white70, fontSize: 10)),
           ],
         ),
       ),
@@ -200,8 +200,8 @@ class _TripCard extends StatelessWidget {
                     ),
                     Text(
                       '${mins}د ${secs}ث',
-                      style: GoogleFonts.cairo(
-                          color: Colors.grey, fontSize: 13),
+                      style:
+                          GoogleFonts.cairo(color: Colors.grey, fontSize: 13),
                     ),
                   ],
                 ),
@@ -217,8 +217,8 @@ class _TripCard extends StatelessWidget {
                     ),
                     Text(
                       'كم (العداد)',
-                      style: GoogleFonts.cairo(
-                          fontSize: 11, color: Colors.grey),
+                      style:
+                          GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
                     ),
                   ],
                 ),

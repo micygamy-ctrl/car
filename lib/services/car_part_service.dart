@@ -53,14 +53,16 @@ class CarPartService {
       'lastServiceOdometer': currentOdometer,
       'lastServiceDate': now,
       'updatedAt': now,
-      'nextDueOdometer': part.intervalKm != null
-          ? currentOdometer + part.intervalKm!
-          : null,
+      'nextDueOdometer':
+          part.intervalKm != null ? currentOdometer + part.intervalKm! : null,
       'nextDueDate': part.intervalDays != null
           ? now.add(Duration(days: part.intervalDays!))
           : null,
     };
-    await _firestore.collection(_collection).doc(part.partId).update(updateData);
+    await _firestore
+        .collection(_collection)
+        .doc(part.partId)
+        .update(updateData);
   }
 
   /// مجموعات كلمات مرادفة لتحديد "نوع" القطعة بغض النظر عن صيغة الاسم
@@ -119,7 +121,8 @@ class CarPartService {
     };
     if (intervalKm != null) updateData['intervalKm'] = intervalKm;
     if (intervalDays != null) updateData['intervalDays'] = intervalDays;
-    if (nextDueOdometer != null) updateData['nextDueOdometer'] = nextDueOdometer;
+    if (nextDueOdometer != null)
+      updateData['nextDueOdometer'] = nextDueOdometer;
     if (nextDueDate != null) updateData['nextDueDate'] = nextDueDate;
 
     // 1) أول حاجة: نشوف هل في قطعة موجودة بنفس "المفهوم" (زيت+محرك مثلًا)
@@ -149,7 +152,10 @@ class CarPartService {
         await _firestore.collection(_collection).doc(exactPartId).get();
 
     if (exactDoc.exists) {
-      await _firestore.collection(_collection).doc(exactPartId).update(updateData);
+      await _firestore
+          .collection(_collection)
+          .doc(exactPartId)
+          .update(updateData);
     } else {
       // إنشاء قطعة جديدة مباشرة بدون البحث في كل القطع
       final newPart = CarPartModel(
@@ -182,7 +188,9 @@ class CarPartService {
 
   String _guessCategoryFromTitle(String title) {
     final t = title.toLowerCase();
-    if (t.contains('زيت') || t.contains('فلتر') || t.contains('بوجيه') ||
+    if (t.contains('زيت') ||
+        t.contains('فلتر') ||
+        t.contains('بوجيه') ||
         t.contains('تبريد')) return 'engine';
     if (t.contains('فرامل') || t.contains('تيل')) return 'brakes';
     if (t.contains('إطار') || t.contains('طار')) return 'tires';

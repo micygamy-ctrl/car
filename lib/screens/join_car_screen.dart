@@ -125,8 +125,8 @@ class _JoinCarScreenState extends State<JoinCarScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(
-                          color: Color(0xFF1E88E5), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF1E88E5), width: 2),
                     ),
                     counterText: '',
                   ),

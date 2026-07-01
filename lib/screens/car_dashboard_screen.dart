@@ -70,7 +70,8 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
       oilChangeInterval: _car.oilChangeInterval,
     );
 
-    final logs = await _maintenanceService.getCarMaintenanceLogs(_car.carId).first;
+    final logs =
+        await _maintenanceService.getCarMaintenanceLogs(_car.carId).first;
     final parts = await _partService.getCarParts(_car.carId).first;
 
     await notif.checkExpiryReminders(
@@ -95,7 +96,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: const Color(0xFFF0F4F8),
       body: StreamBuilder<List<CarPartModel>>(
         stream: _partService.getCarParts(_car.carId),
         builder: (context, partsSnap) {
@@ -111,16 +112,15 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
             });
 
           final overdueCount = sortedParts
-              .where((p) =>
-                  p.status(_car.currentOdometer) == PartStatus.overdue)
+              .where(
+                  (p) => p.status(_car.currentOdometer) == PartStatus.overdue)
               .length;
           final dueSoonCount = sortedParts
-              .where((p) =>
-                  p.status(_car.currentOdometer) == PartStatus.dueSoon)
+              .where(
+                  (p) => p.status(_car.currentOdometer) == PartStatus.dueSoon)
               .length;
           final okCount = sortedParts
-              .where(
-                  (p) => p.status(_car.currentOdometer) == PartStatus.ok)
+              .where((p) => p.status(_car.currentOdometer) == PartStatus.ok)
               .length;
 
           final healthScore =
@@ -130,24 +130,26 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
             slivers: [
               // ═══════════════════════ HEADER ═══════════════════════
               SliverAppBar(
-                expandedHeight: 200,
+                expandedHeight: 210,
                 pinned: true,
-                backgroundColor: const Color(0xFF1E88E5),
+                backgroundColor: const Color(0xFF0F172A),
+                elevation: 0,
                 iconTheme: const IconThemeData(color: Colors.white),
                 actions: [
                   if (widget.isAdmin) ...[
                     IconButton(
-                      icon: const Icon(Icons.people, color: Colors.white),
+                      icon: const Icon(Icons.people_rounded,
+                          color: Colors.white70, size: 22),
                       tooltip: 'إدارة السواقين',
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) =>
-                                ManageDriversScreen(car: _car)),
+                            builder: (_) => ManageDriversScreen(car: _car)),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.white),
+                      icon: const Icon(Icons.edit_rounded,
+                          color: Colors.white70, size: 22),
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -155,12 +157,13 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline,
-                          color: Colors.white),
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: Colors.white70, size: 22),
                       tooltip: 'حذف السيارة',
                       onPressed: () => _confirmDelete(context),
                     ),
                   ],
+                  const SizedBox(width: 4),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: _buildHeader(healthScore, overdueCount,
@@ -169,7 +172,9 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                 title: Text(
                   '${_cap(_car.make)} ${_cap(_car.model)}',
                   style: GoogleFonts.cairo(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17),
                 ),
               ),
 
@@ -179,63 +184,55 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                   child: Column(
                     children: [
                       // ═══════════════════════ أزرار سريعة ═══════════════════════
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          _quickBtn(context, Icons.local_gas_station, 'وقود',
-                              const Color(0xFFFB8C00), () {
+                          _quickBtn(context, Icons.local_gas_station_rounded,
+                              'وقود', const Color(0xFFF97316), () {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        AddFuelScreen(car: _car)));
+                                    builder: (_) => AddFuelScreen(car: _car)));
                           }),
-                          const SizedBox(width: 8),
-                          _quickBtn(context, Icons.build, 'خدمة',
-                              const Color(0xFF43A047), () {
+                          _quickBtn(context, Icons.build_rounded, 'خدمة',
+                              const Color(0xFF22C55E), () {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) =>
                                         AddServiceScreen(car: _car)));
                           }),
-                          // زرار العداد للمالك فقط — السواق عداده بيتحدث
-                          // تلقائيًا من خلال تسجيل الرحلات
-                          if (widget.isAdmin) ...[
-                            const SizedBox(width: 8),
-                            _quickBtn(context, Icons.speed, 'عداد',
-                                const Color(0xFF1E88E5), () {
+                          if (widget.isAdmin)
+                            _quickBtn(context, Icons.speed_rounded, 'عداد',
+                                const Color(0xFF38BDF8), () {
                               Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (_) => OdometerUpdateScreen(
-                                          car: _car)));
+                                      builder: (_) =>
+                                          OdometerUpdateScreen(car: _car)));
                             }),
-                          ],
-                          const SizedBox(width: 8),
-                          _quickBtn(context, Icons.history, 'سجلات',
-                              const Color(0xFF8E24AA), () {
+                          _quickBtn(context, Icons.receipt_long_rounded,
+                              'سجلات', const Color(0xFF8B5CF6), () {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => LogsScreen(
-                                        car: _car,
-                                        isAdmin: widget.isAdmin)));
+                                        car: _car, isAdmin: widget.isAdmin)));
                           }),
-                          const SizedBox(width: 8),
-                          _quickBtn(context, Icons.bar_chart, 'تقارير',
-                              const Color(0xFFE53935), () {
+                          _quickBtn(context, Icons.bar_chart_rounded, 'تقارير',
+                              const Color(0xFFEF4444), () {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        ReportsScreen(car: _car)));
+                                    builder: (_) => ReportsScreen(car: _car)));
                           }),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
                       // ═══════════════════════ زرار الرحلات (سواق فقط) ═══════════════════════
-                      if (!widget.isAdmin)
+                      if (!widget.isAdmin) ...[
                         Row(
                           children: [
                             Expanded(
@@ -253,24 +250,24 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xFF43A047),
-                                        Color(0xFF2E7D32)
+                                        Color(0xFF22C55E),
+                                        Color(0xFF16A34A)
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(14),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFF43A047)
+                                        color: const Color(0xFF22C55E)
                                             .withAlpha(80),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Icon(Icons.play_arrow,
+                                      const Icon(Icons.play_arrow_rounded,
                                           color: Colors.white, size: 22),
                                       const SizedBox(width: 8),
                                       Text(
@@ -288,9 +285,8 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _quickBtn(
-                                  context, Icons.history_edu, 'الرحلات',
-                                  const Color(0xFF00ACC1), () {
+                              child: _quickBtn(context, Icons.route_rounded,
+                                  'الرحلات', const Color(0xFF06B6D4), () {
                                 Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -300,9 +296,10 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                             ),
                           ],
                         ),
-                      const SizedBox(height: 10),
+                        const SizedBox(height: 12),
+                      ],
 
-                      // ═══════════════════════ لو في تحذيرات ═══════════════════════
+                      // ═══════════════════════ تحذيرات ═══════════════════════
                       if (overdueCount > 0)
                         _buildAlertBanner(
                           '⚠️ $overdueCount ${overdueCount == 1 ? 'قطعة' : 'قطع'} تجاوزت موعد الصيانة!',
@@ -317,13 +314,16 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                         const SizedBox(height: 12),
 
                       // ═══════════════════════ القطع الذكية ═══════════════════════
-                      _buildSectionHeader('حالة القطع 🔧', const Color(0xFF8E24AA)),
-                      const SizedBox(height: 8),
+                      _buildSectionHeader('حالة القطع', Icons.settings_rounded,
+                          const Color(0xFF8B5CF6)),
+                      const SizedBox(height: 10),
 
                       if (partsSnap.connectionState ==
                               ConnectionState.waiting &&
                           parts.isEmpty)
-                        const Center(child: CircularProgressIndicator())
+                        const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF38BDF8)))
                       else if (parts.isEmpty)
                         _buildEmptyParts()
                       else
@@ -332,18 +332,20 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       const SizedBox(height: 20),
 
                       // ═══════════════════════ آخر وقود ═══════════════════════
-                      _buildSectionHeader('آخر تزود وقود ⛽', const Color(0xFFFB8C00)),
-                      const SizedBox(height: 8),
+                      _buildSectionHeader(
+                          'آخر تزود وقود',
+                          Icons.local_gas_station_rounded,
+                          const Color(0xFFF97316)),
+                      const SizedBox(height: 10),
                       StreamBuilder<List<FuelLogModel>>(
-                        stream:
-                            _fuelService.getCarFuelLogs(_car.carId),
+                        stream: _fuelService.getCarFuelLogs(_car.carId),
                         builder: (ctx, fuelSnap) {
                           final logs = fuelSnap.data ?? [];
                           if (logs.isEmpty) {
                             return _buildEmptyCard(
-                                'مفيش سجلات وقود لسه',
-                                Icons.local_gas_station,
-                                const Color(0xFFFB8C00));
+                                'لا توجد سجلات وقود بعد',
+                                Icons.local_gas_station_rounded,
+                                const Color(0xFFF97316));
                           }
                           return _buildFuelSummary(logs.first, logs);
                         },
@@ -377,127 +379,160 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
         ),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Health score + مؤشرات بصرية
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('حالة السيارة',
-                      style: GoogleFonts.cairo(
-                          color: Colors.white70, fontSize: 12)),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        '$healthScore',
-                        style: GoogleFonts.cairo(
-                          color: healthColor,
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text('/100',
-                          style: GoogleFonts.cairo(
-                              color: Colors.white54, fontSize: 14)),
-                    ],
-                  ),
-                  // شريط التقدم
-                  Container(
-                    width: 110,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: healthScore / 100,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: healthColor,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  // مؤشرات الألوان
-                  if (total > 0)
-                    Row(
-                      children: [
-                        if (overdueCount > 0)
-                          _miniChip('$overdueCount', Colors.red),
-                        if (dueSoonCount > 0) ...[
-                          if (overdueCount > 0) const SizedBox(width: 4),
-                          _miniChip('$dueSoonCount', Colors.orange),
-                        ],
-                        if (okCount > 0) ...[
-                          if (overdueCount > 0 || dueSoonCount > 0)
-                            const SizedBox(width: 4),
-                          _miniChip('$okCount', Colors.green),
-                        ],
-                      ],
-                    ),
-                ],
+      child: Stack(
+        children: [
+          // دوائر زخرفية
+          Positioned(
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF38BDF8).withAlpha(15),
               ),
-              // معلومات السيارة
-              Column(
-                mainAxisAlignment: MainAxisAlignment.end,
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 20,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF38BDF8).withAlpha(10),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 56, 20, 18),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    '${_cap(_car.make)} ${_cap(_car.model)}',
-                    style: GoogleFonts.cairo(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    '${_car.year} • ${_car.licensePlate}',
-                    style: GoogleFonts.cairo(
-                        color: Colors.white70, fontSize: 13),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(51),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${_car.currentOdometer.toStringAsFixed(0)} كم',
-                          style: GoogleFonts.cairo(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
+                  // Health score دائري
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 90,
+                        height: 90,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 90,
+                              height: 90,
+                              child: CircularProgressIndicator(
+                                value: healthScore / 100,
+                                strokeWidth: 7,
+                                backgroundColor: Colors.white.withAlpha(20),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(healthColor),
+                                strokeCap: StrokeCap.round,
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$healthScore',
+                                  style: GoogleFonts.cairo(
+                                    color: healthColor,
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text('%',
+                                    style: GoogleFonts.cairo(
+                                        color: Colors.white54, fontSize: 11)),
+                              ],
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.speed,
-                            color: Colors.white70, size: 16),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('حالة السيارة',
+                          style: GoogleFonts.cairo(
+                              color: Colors.white54, fontSize: 11)),
+                      const SizedBox(height: 4),
+                      if (total > 0)
+                        Row(
+                          children: [
+                            if (overdueCount > 0)
+                              _miniChip('$overdueCount', Colors.red),
+                            if (dueSoonCount > 0) ...[
+                              if (overdueCount > 0) const SizedBox(width: 4),
+                              _miniChip('$dueSoonCount', Colors.orange),
+                            ],
+                            if (okCount > 0) ...[
+                              if (overdueCount > 0 || dueSoonCount > 0)
+                                const SizedBox(width: 4),
+                              _miniChip('$okCount', Colors.green),
+                            ],
+                          ],
+                        ),
+                    ],
+                  ),
+                  // معلومات السيارة
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_cap(_car.make)} ${_cap(_car.model)}',
+                        style: GoogleFonts.cairo(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${_car.year} • ${_car.licensePlate}',
+                        style: GoogleFonts.cairo(
+                            color: const Color(0xFF38BDF8), fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: Colors.white.withAlpha(25), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${_car.currentOdometer.toStringAsFixed(0)} كم',
+                              style: GoogleFonts.cairo(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.speed_rounded,
+                                color: Color(0xFF38BDF8), size: 16),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -577,102 +612,100 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: status != PartStatus.ok
-              ? statusColor.withAlpha(76)
-              : Colors.grey.withAlpha(26),
-          width: status != PartStatus.ok ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(10),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: status != PartStatus.ok
+                ? statusColor.withAlpha(76)
+                : Colors.grey.withAlpha(26),
+            width: status != PartStatus.ok ? 1.5 : 1,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Badge الحالة
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withAlpha(26),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(statusIcon, color: statusColor, size: 12),
-                    const SizedBox(width: 4),
-                    Text(statusText,
-                        style: GoogleFonts.cairo(
-                          color: statusColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        )),
-                  ],
-                ),
-              ),
-              // اسم القطعة
-              Text(
-                part.name,
-                style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: status == PartStatus.overdue
-                      ? Colors.red
-                      : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // شريط التقدم
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: prog,
-              backgroundColor: Colors.grey.withAlpha(38),
-              valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-              minHeight: 7,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(10),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                remainingText,
-                style: GoogleFonts.cairo(
-                  color: statusColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Badge الحالة
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha(26),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, color: statusColor, size: 12),
+                      const SizedBox(width: 4),
+                      Text(statusText,
+                          style: GoogleFonts.cairo(
+                            color: statusColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          )),
+                    ],
+                  ),
                 ),
+                // اسم القطعة
+                Text(
+                  part.name,
+                  style: GoogleFonts.cairo(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: status == PartStatus.overdue
+                        ? Colors.red
+                        : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // شريط التقدم
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: prog,
+                backgroundColor: Colors.grey.withAlpha(38),
+                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                minHeight: 7,
               ),
-              if (part.nextDueOdometer != null)
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Text(
-                  'عند ${part.nextDueOdometer!.toStringAsFixed(0)} كم',
-                  style:
-                      GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
-                )
-              else if (part.nextDueDate != null)
-                Text(
-                  DateFormat('dd/MM/yyyy').format(part.nextDueDate!),
-                  style:
-                      GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
+                  remainingText,
+                  style: GoogleFonts.cairo(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-            ],
-          ),
-        ],
-      ),
+                if (part.nextDueOdometer != null)
+                  Text(
+                    'عند ${part.nextDueOdometer!.toStringAsFixed(0)} كم',
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
+                  )
+                else if (part.nextDueDate != null)
+                  Text(
+                    DateFormat('dd/MM/yyyy').format(part.nextDueDate!),
+                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -730,7 +763,8 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
               }
             },
             child: Text('حذف',
-                style: GoogleFonts.cairo(color: Colors.red, fontWeight: FontWeight.bold)),
+                style: GoogleFonts.cairo(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -746,13 +780,14 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
     final withEff =
         all.where((l) => l.calculatedEfficiency != null).take(5).toList();
     if (withEff.isNotEmpty) {
-      avgEff = withEff.map((l) => l.calculatedEfficiency!).reduce((a, b) => a + b) /
-          withEff.length;
+      avgEff =
+          withEff.map((l) => l.calculatedEfficiency!).reduce((a, b) => a + b) /
+              withEff.length;
     }
 
     return GestureDetector(
-      onTap: () => Navigator.push(context,
-          MaterialPageRoute(builder: (_) => LogsScreen(car: _car))),
+      onTap: () => Navigator.push(
+          context, MaterialPageRoute(builder: (_) => LogsScreen(car: _car))),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -790,8 +825,8 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _fuelStat('${last.totalCost.toStringAsFixed(0)} ج.م',
-                    'التكلفة', Icons.attach_money, Colors.red),
+                _fuelStat('${last.totalCost.toStringAsFixed(0)} ج.م', 'التكلفة',
+                    Icons.attach_money, Colors.red),
                 _fuelStat('${last.fuelAmount} لتر', 'الكمية',
                     Icons.local_gas_station, const Color(0xFFFB8C00)),
                 _fuelStat('${last.odometer.toStringAsFixed(0)} كم', 'العداد',
@@ -815,8 +850,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
         Text(val,
             style: GoogleFonts.cairo(
                 fontWeight: FontWeight.bold, fontSize: 13, color: color)),
-        Text(label,
-            style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11)),
+        Text(label, style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11)),
       ],
     );
   }
@@ -824,7 +858,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
   // ══════════════════════════════════════
   //  HELPERS
   // ══════════════════════════════════════
-  Widget _buildSectionHeader(String title, Color color) {
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -833,8 +867,17 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
           style: GoogleFonts.cairo(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: const Color(0xFF0F172A),
           ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withAlpha(25),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 16),
         ),
       ],
     );
@@ -901,8 +944,7 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
         children: [
           Icon(icon, color: color.withAlpha(128), size: 24),
           const SizedBox(width: 8),
-          Text(msg,
-              style: GoogleFonts.cairo(color: Colors.grey, fontSize: 14)),
+          Text(msg, style: GoogleFonts.cairo(color: Colors.grey, fontSize: 14)),
         ],
       ),
     );
@@ -910,17 +952,19 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
 
   Widget _quickBtn(BuildContext context, IconData icon, String label,
       Color color, VoidCallback onTap) {
-    return Expanded(
+    return SizedBox(
+      width: 82,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          constraints: const BoxConstraints(minHeight: 84),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: color.withAlpha(38),
+                color: Colors.black.withAlpha(12),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -929,20 +973,22 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
           child: Column(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: color.withAlpha(31),
-                  shape: BoxShape.circle,
+                  color: color.withAlpha(22),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: color, size: 18),
+                child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 6),
               Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: color,
+                    color: const Color(0xFF374151),
                   )),
             ],
           ),
@@ -964,7 +1010,8 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('حذف السيارة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        title: Text('حذف السيارة',
+            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
         content: Text(
           'هل أنت متأكد من حذف "${_car.make} ${_car.model}"؟\nلن يمكن التراجع عن هذا الإجراء.',
           style: GoogleFonts.cairo(),
@@ -976,7 +1023,9 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('حذف', style: GoogleFonts.cairo(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: Text('حذف',
+                style: GoogleFonts.cairo(
+                    color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

@@ -44,13 +44,16 @@ class _CarLocationScreenState extends State<CarLocationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            success ? 'تم حفظ مكان العربية ✅' : 'تعذّر الحصول على الموقع، تأكد من تفعيل خدمة الموقع',
+            success
+                ? 'تم حفظ مكان العربية ✅'
+                : 'تعذّر الحصول على الموقع، تأكد من تفعيل خدمة الموقع',
             style: GoogleFonts.cairo(),
             textAlign: TextAlign.right,
           ),
           backgroundColor: success ? Colors.green : Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }
@@ -114,7 +117,8 @@ class _CarLocationScreenState extends State<CarLocationScreen> {
                             children: [
                               Text('آخر موقع محفوظ',
                                   style: GoogleFonts.cairo(
-                                      fontWeight: FontWeight.bold, fontSize: 15)),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15)),
                               const SizedBox(width: 6),
                               const Icon(Icons.location_on,
                                   color: _primaryColor, size: 18),

@@ -287,8 +287,9 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       final intervalKm = _addReminder
           ? double.tryParse(_intervalKmController.text.trim())
           : null;
-      final intervalDays =
-          _addReminder ? int.tryParse(_intervalDaysController.text.trim()) : null;
+      final intervalDays = _addReminder
+          ? int.tryParse(_intervalDaysController.text.trim())
+          : null;
       final nextDueOdometer =
           _addReminder && _nextOdometerController.text.trim().isNotEmpty
               ? double.tryParse(_nextOdometerController.text.trim())

@@ -62,7 +62,8 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
   double? _calculateEfficiency() {
     final currentOdometer = double.tryParse(_odometerController.text.trim());
     final fuelAmount = double.tryParse(_fuelAmountController.text.trim());
-    if (currentOdometer == null || fuelAmount == null || fuelAmount == 0) return null;
+    if (currentOdometer == null || fuelAmount == null || fuelAmount == 0)
+      return null;
     final distance = currentOdometer - _lastFullTankOdometer;
     if (distance <= 0) return null;
     return (fuelAmount / distance) * 100;
@@ -324,9 +325,8 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
                             hint: 'مثال: 40',
                             icon: Icons.local_gas_station,
                             keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty
-                                ? 'من فضلك أدخل كمية الوقود'
-                                : null,
+                            validator: (v) =>
+                                v!.isEmpty ? 'من فضلك أدخل كمية الوقود' : null,
                             onChanged: (_) => setState(() {}),
                           ),
                           _buildTextField(
@@ -508,8 +508,7 @@ class _AddFuelScreenState extends State<AddFuelScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide:
-                const BorderSide(color: Color(0xFF1E88E5), width: 2),
+            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 2),
           ),
         ),
         validator: validator,

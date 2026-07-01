@@ -34,8 +34,7 @@ class TripModel {
       'startOdometer': startOdometer,
       'endOdometer': endOdometer,
       'distanceKm': distanceKm,
-      'startTime':
-          startTime != null ? Timestamp.fromDate(startTime!) : null,
+      'startTime': startTime != null ? Timestamp.fromDate(startTime!) : null,
       'endTime': endTime != null ? Timestamp.fromDate(endTime!) : null,
       'status': status,
     };

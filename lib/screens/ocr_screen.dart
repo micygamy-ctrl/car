@@ -74,7 +74,8 @@ class _OcrScreenState extends State<OcrScreen> {
   double? _extractOdometer(String text) {
     // البحث عن أرقام تشبه قراءة العداد (3-6 أرقام)
     final RegExp regExp = RegExp(r'\b\d{3,6}\b');
-    final matches = regExp.allMatches(text.replaceAll(',', '').replaceAll('.', ''));
+    final matches =
+        regExp.allMatches(text.replaceAll(',', '').replaceAll('.', ''));
 
     List<double> candidates = [];
     for (var match in matches) {

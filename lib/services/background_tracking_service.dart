@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background/flutter_background.dart' as fb;
 
 import '../models/car_model.dart';
+import 'notification_service.dart';
 
 // ─── نتيجة التتبع ───
 class TrackingResult {
@@ -24,7 +25,8 @@ class LiveTrackingData {
     required this.distanceKm,
     required this.elapsedSeconds,
   });
-  static const zero = LiveTrackingData(speedKmh: 0, distanceKm: 0, elapsedSeconds: 0);
+  static const zero =
+      LiveTrackingData(speedKmh: 0, distanceKm: 0, elapsedSeconds: 0);
 }
 
 // ─── جلسة التتبع الداخلية ───
@@ -203,8 +205,17 @@ class BackgroundTrackingService {
       if (isMoving) {
         _movementCounts[carId] = (_movementCounts[carId] ?? 0) + 1;
         if ((_movementCounts[carId] ?? 0) >= _movementConfirmationCount) {
+          final car = _monitoredCars[carId];
           _monitoredCars.remove(carId);
           _movementCounts.remove(carId);
+          // إرسال notification فعلية تصحّي المستخدم حتى لو الشاشة مقفولة
+          if (car != null) {
+            NotificationService().showNotification(
+              id: car.carId.hashCode.abs() % 900000 + 1000000,
+              title: '🚗 عربيتك بدأت تتحرك!',
+              body: '${car.make} ${car.model} — اضغط لبدء تتبع العداد تلقائياً',
+            );
+          }
           movementDetectedForCar.value = carId;
           break;
         }
@@ -274,10 +285,12 @@ class BackgroundTrackingService {
         }
 
         final speed = pos.speed >= 0 ? pos.speed : 0.0;
-        final isStationary =
-            speed < _stationarySpeedMs || movedDistance < _minMovementMeters;
+        final isMoving =
+            speed >= _stationarySpeedMs && movedDistance >= _minMovementMeters;
 
-        if (isStationary) {
+        if (!isMoving) {
+          // واقف أو انجراف GPS — حدّث نقطة المرجع عشان منراكمش الخطأ
+          session.lastPosition = pos;
           // ابدأ عداد الوقوف (5 دقائق) لو مش شغال
           session.stationaryTimer ??= Timer(_stationaryTimeout, () {
             stopTracking(car.carId);
@@ -290,8 +303,7 @@ class BackgroundTrackingService {
         }
 
         // حدّث بيانات العداد المرئي
-        final elapsed =
-            DateTime.now().difference(session.startTime).inSeconds;
+        final elapsed = DateTime.now().difference(session.startTime).inSeconds;
         final updated =
             Map<String, LiveTrackingData>.from(liveTrackingData.value);
         updated[car.carId] = LiveTrackingData(
@@ -335,6 +347,9 @@ class BackgroundTrackingService {
 
     // أخبر الـ UI بالنتيجة (يدوي أو تلقائي)
     trackingCompleted.value = MapEntry(carId, result);
+
+    // ✅ أعِد تشغيل المراقبة السلبية عشان نكتشف الحركة التالية
+    startPassiveMonitor(session.car);
 
     return result;
   }

@@ -168,15 +168,10 @@ class _FuelReportTab extends StatelessWidget {
                     'ج.م', Icons.attach_money, const Color(0xFFE53935)),
                 _StatData('إجمالي الوقود', '${totalFuel.toStringAsFixed(0)}',
                     'لتر', Icons.local_gas_station, const Color(0xFFFB8C00)),
-                _StatData(
-                    'عدد التزودات', '${logs.length}', 'مرة',
+                _StatData('عدد التزودات', '${logs.length}', 'مرة',
                     Icons.format_list_numbered, const Color(0xFF1E88E5)),
-                _StatData(
-                    'متوسط التزود',
-                    avgCostPerFill.toStringAsFixed(0),
-                    'ج.م',
-                    Icons.show_chart,
-                    const Color(0xFF8E24AA)),
+                _StatData('متوسط التزود', avgCostPerFill.toStringAsFixed(0),
+                    'ج.م', Icons.show_chart, const Color(0xFF8E24AA)),
               ]),
 
               const SizedBox(height: 20),
@@ -195,15 +190,17 @@ class _FuelReportTab extends StatelessWidget {
                 _ChartCard(
                   title: 'استهلاك الوقود (ل/100كم)',
                   color: const Color(0xFF43A047),
-                  chart: _buildEfficiencyLineChart(
-                      chartLogs.where((l) => l.calculatedEfficiency != null).toList()),
+                  chart: _buildEfficiencyLineChart(chartLogs
+                      .where((l) => l.calculatedEfficiency != null)
+                      .toList()),
                   subtitle: 'متوسط ${avgEff.toStringAsFixed(1)} ل/100كم',
                 ),
                 const SizedBox(height: 16),
               ],
 
               // آخر السجلات
-              _sectionHeader('آخر التزودات', Icons.history, const Color(0xFFE53935)),
+              _sectionHeader(
+                  'آخر التزودات', Icons.history, const Color(0xFFE53935)),
               const SizedBox(height: 8),
               ...logs.take(6).map((l) => _FuelRow(log: l)),
               const SizedBox(height: 24),
@@ -221,7 +218,8 @@ class _FuelReportTab extends StatelessWidget {
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: logs.map((l) => l.totalCost).reduce((a, b) => a > b ? a : b) * 1.3,
+          maxY: logs.map((l) => l.totalCost).reduce((a, b) => a > b ? a : b) *
+              1.3,
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
               getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
@@ -244,8 +242,10 @@ class _FuelReportTab extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -271,10 +271,14 @@ class _FuelReportTab extends StatelessWidget {
                   toY: e.value.totalCost,
                   color: const Color(0xFFE53935),
                   width: 18,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(6)),
                   backDrawRodData: BackgroundBarChartRodData(
                     show: true,
-                    toY: logs.map((l) => l.totalCost).reduce((a, b) => a > b ? a : b) * 1.3,
+                    toY: logs
+                            .map((l) => l.totalCost)
+                            .reduce((a, b) => a > b ? a : b) *
+                        1.3,
                     color: Colors.grey.withAlpha(20),
                   ),
                 ),
@@ -323,8 +327,10 @@ class _FuelReportTab extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
@@ -418,15 +424,18 @@ class _MaintenanceReportTab extends StatelessWidget {
           child: Column(
             children: [
               _statsGrid([
-                _StatData('إجمالي الصيانة', totalCost.toStringAsFixed(0),
-                    'ج.م', Icons.build, const Color(0xFF43A047)),
+                _StatData('إجمالي الصيانة', totalCost.toStringAsFixed(0), 'ج.م',
+                    Icons.build, const Color(0xFF43A047)),
                 _StatData('عدد العمليات', '${logs.length}', 'عملية',
                     Icons.format_list_numbered, const Color(0xFF1E88E5)),
                 _StatData('متوسط تكلفة', avgCost.toStringAsFixed(0), 'ج.م',
                     Icons.analytics, const Color(0xFFE53935)),
-                _StatData('آخر صيانة',
-                    DateFormat('dd/MM').format(logs.first.date), '',
-                    Icons.calendar_today, const Color(0xFFFB8C00)),
+                _StatData(
+                    'آخر صيانة',
+                    DateFormat('dd/MM').format(logs.first.date),
+                    '',
+                    Icons.calendar_today,
+                    const Color(0xFFFB8C00)),
               ]),
 
               const SizedBox(height: 20),
@@ -451,7 +460,8 @@ class _MaintenanceReportTab extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              _sectionHeader('آخر العمليات', Icons.history, const Color(0xFF43A047)),
+              _sectionHeader(
+                  'آخر العمليات', Icons.history, const Color(0xFF43A047)),
               const SizedBox(height: 8),
               ...logs.take(6).map((l) => _MaintenanceRow(log: l)),
               const SizedBox(height: 24),
@@ -598,7 +608,8 @@ class _MaintenanceReportTab extends StatelessWidget {
                   children: [
                     Text(
                       e.value.key,
-                      style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[700]),
+                      style: GoogleFonts.cairo(
+                          fontSize: 11, color: Colors.grey[700]),
                     ),
                     const SizedBox(width: 6),
                     Container(
@@ -669,10 +680,8 @@ class _TotalReportTab extends StatelessWidget {
             final fuelLogs = fuelSnap.data ?? [];
             final maintLogs = maintSnap.data ?? [];
 
-            double totalFuelCost =
-                fuelLogs.fold(0, (s, l) => s + l.totalCost);
-            double totalMaintCost =
-                maintLogs.fold(0, (s, l) => s + l.cost);
+            double totalFuelCost = fuelLogs.fold(0, (s, l) => s + l.totalCost);
+            double totalMaintCost = maintLogs.fold(0, (s, l) => s + l.cost);
             final grandTotal = totalFuelCost + totalMaintCost;
 
             // بناء الداتا للـ stacked bar chart: إنفاق شهري
@@ -687,11 +696,8 @@ class _TotalReportTab extends StatelessWidget {
               maintByMonth[k] = (maintByMonth[k] ?? 0) + l.cost;
             }
 
-            final allMonths = {
-              ...fuelByMonth.keys,
-              ...maintByMonth.keys
-            }.toList()
-              ..sort();
+            final allMonths =
+                {...fuelByMonth.keys, ...maintByMonth.keys}.toList()..sort();
             final last6 = allMonths.length > 6
                 ? allMonths.sublist(allMonths.length - 6)
                 : allMonths;
@@ -737,11 +743,13 @@ class _TotalReportTab extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _totalChip('وقود',
-                                totalFuelCost.toStringAsFixed(0), Colors.orange),
+                            _totalChip('وقود', totalFuelCost.toStringAsFixed(0),
+                                Colors.orange),
                             const SizedBox(width: 12),
-                            _totalChip('صيانة',
-                                totalMaintCost.toStringAsFixed(0), Colors.green),
+                            _totalChip(
+                                'صيانة',
+                                totalMaintCost.toStringAsFixed(0),
+                                Colors.green),
                           ],
                         ),
                       ],
@@ -765,8 +773,8 @@ class _TotalReportTab extends StatelessWidget {
                     _ChartCard(
                       title: 'الإنفاق الشهري 📅',
                       color: const Color(0xFFFB8C00),
-                      chart: _buildMonthlyChart(
-                          last6, fuelByMonth, maintByMonth),
+                      chart:
+                          _buildMonthlyChart(last6, fuelByMonth, maintByMonth),
                     ),
 
                   const SizedBox(height: 24),
@@ -1007,9 +1015,7 @@ class _ChartCard extends StatelessWidget {
               if (subtitle != null) const SizedBox(width: 8),
               Text(title,
                   style: GoogleFonts.cairo(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                      fontSize: 15)),
+                      fontWeight: FontWeight.bold, color: color, fontSize: 15)),
             ],
           ),
           const SizedBox(height: 16),
@@ -1133,8 +1139,7 @@ class _FuelRow extends StatelessWidget {
         children: [
           Text('${log.totalCost.toStringAsFixed(0)} ج.م',
               style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFFE53935))),
+                  fontWeight: FontWeight.bold, color: const Color(0xFFE53935))),
           Row(children: [
             Text('${log.fuelAmount} لتر',
                 style: GoogleFonts.cairo(color: Colors.grey, fontSize: 13)),
@@ -1173,8 +1178,7 @@ class _MaintenanceRow extends StatelessWidget {
         children: [
           Text('${log.cost.toStringAsFixed(0)} ج.م',
               style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF43A047))),
+                  fontWeight: FontWeight.bold, color: const Color(0xFF43A047))),
           Text(log.title,
               style:
                   GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
