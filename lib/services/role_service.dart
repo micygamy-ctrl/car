@@ -29,8 +29,20 @@ class CarMember {
 }
 
 class RoleService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore;
+  final FirebaseAuth? _authOverride;
+
+  /// في الإنتاج: RoleService() هتستخدم Firebase الحقيقي زي ما كان بالظبط.
+  /// في الاختبار: RoleService(firestore: fakeFirestore, auth: mockAuth).
+  ///
+  /// ملحوظة: FirebaseAuth.instance بيتجاب فقط لحظة الاستخدام الفعلي
+  /// (lazy) مش وقت الإنشاء، عشان اختبارات زي getUserRole اللي مش
+  /// بتلمس auth أصلاً متحتاجش Firebase.initializeApp().
+  RoleService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _authOverride = auth;
+
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
   static const Duration inviteCodeValidity = Duration(days: 7);
   static const _chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -91,8 +103,9 @@ class RoleService {
     final data = codeDoc.data()!;
 
     final expiresAt = (data['expiresAt'] as Timestamp).toDate();
-    if (DateTime.now().isAfter(expiresAt))
+    if (DateTime.now().isAfter(expiresAt)) {
       throw Exception('انتهت صلاحية الكود');
+    }
 
     final carId = data['carId'] as String;
 

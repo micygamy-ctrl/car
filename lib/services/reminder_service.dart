@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/car_model.dart';
 import '../models/car_part_model.dart';
@@ -8,9 +9,21 @@ import 'notification_service.dart';
 class ReminderService {
   static final ReminderService _instance = ReminderService._internal();
   factory ReminderService() => _instance;
-  ReminderService._internal();
+  ReminderService._internal()
+      : _firestore = FirebaseFirestore.instance,
+        _notif = NotificationService();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// باب خلفي للاختبارات فقط — بيتجاوز الـ singleton عشان نقدر
+  /// نمرر Firestore وهمي و NotificationService وهمي.
+  @visibleForTesting
+  ReminderService.forTesting({
+    required FirebaseFirestore firestore,
+    required NotificationService notificationService,
+  })  : _firestore = firestore,
+        _notif = notificationService;
+
+  final FirebaseFirestore _firestore;
+  final NotificationService _notif;
 
   // بيتحقق إذا كان اليوم اتعملتله فحص قبل كده — key خاص بكل مستخدم
   Future<bool> _shouldCheck(String userId) async {
@@ -73,10 +86,9 @@ class ReminderService {
 
   Future<void> _checkCar(CarModel car) async {
     final carName = '${car.make} ${car.model}';
-    final notif = NotificationService();
 
     // 1. فحص تغيير الزيت
-    await notif.checkOilChangeReminder(
+    await _notif.checkOilChangeReminder(
       carId: car.carId,
       carName: carName,
       currentOdometer: car.currentOdometer,
@@ -109,14 +121,14 @@ class ReminderService {
           .toList();
 
       // 3. فحص التواريخ (سجلات الخدمات)
-      await notif.checkExpiryReminders(
+      await _notif.checkExpiryReminders(
         carId: car.carId,
         carName: carName,
         logs: logs,
       );
 
       // 4. فحص الكيلومترات (سجلات الخدمات)
-      await notif.checkOdometerReminders(
+      await _notif.checkOdometerReminders(
         carId: car.carId,
         carName: carName,
         currentOdometer: car.currentOdometer,
@@ -124,7 +136,7 @@ class ReminderService {
       );
 
       // 5. فحص قطع السيارة (carParts collection)
-      await notif.checkCarPartsReminders(
+      await _notif.checkCarPartsReminders(
         carId: car.carId,
         carName: carName,
         currentOdometer: car.currentOdometer,
