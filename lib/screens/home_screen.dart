@@ -23,6 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthService authService = AuthService();
   final CarService carService = CarService();
   final BackgroundTrackingService _bgService = BackgroundTrackingService();
+  late final Stream<List<CarWithRole>> _carsStream;
+
 
   late final VoidCallback _activeTrackingsListener;
   late final VoidCallback _backgroundEnabledListener;
@@ -35,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _backgroundEnabledListener = () => setState(() {});
     _bgService.activeTrackings.addListener(_activeTrackingsListener);
     _bgService.backgroundEnabled.addListener(_backgroundEnabledListener);
+    _carsStream = carService.getUserCarsWithRole(authService.currentUser?.uid ?? '');
     final user = AuthService().currentUser;
     if (user != null) {
       ReminderService().runDailyCheck(user.uid);
@@ -245,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
             centerTitle: true,
           ),
           StreamBuilder<List<CarWithRole>>(
-            stream: carService.getUserCarsWithRole(user?.uid ?? ''),
+            stream: _carsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SliverFillRemaining(
