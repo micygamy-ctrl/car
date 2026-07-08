@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../models/car_model.dart';
 import '../models/car_part_model.dart';
 import '../models/fuel_log_model.dart';
@@ -20,6 +19,9 @@ import 'odometer_update_screen.dart';
 import 'manage_drivers_screen.dart';
 import 'active_trip_screen.dart';
 import 'trips_history_screen.dart';
+import '../widgets/car_dashboard/dashboard_header.dart';
+import '../widgets/car_dashboard/part_status_card.dart';
+import '../widgets/car_dashboard/fuel_summary_card.dart';
 
 class CarDashboardScreen extends StatefulWidget {
   final CarModel car;
@@ -166,8 +168,14 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                   const SizedBox(width: 4),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: _buildHeader(healthScore, overdueCount,
-                      dueSoonCount, okCount, parts.length),
+                  background: CarDashboardHeader(
+                    car: _car,
+                    healthScore: healthScore,
+                    overdueCount: overdueCount,
+                    dueSoonCount: dueSoonCount,
+                    okCount: okCount,
+                    total: parts.length,
+                  ),
                 ),
                 title: Text(
                   '${_cap(_car.make)} ${_cap(_car.model)}',
@@ -327,7 +335,11 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                       else if (parts.isEmpty)
                         _buildEmptyParts()
                       else
-                        ...sortedParts.map((part) => _buildPartCard(part)),
+                        ...sortedParts.map((part) => PartStatusCard(
+                            part: part,
+                            currentOdometer: _car.currentOdometer,
+                            onLongPress: () => _confirmDeletePart(part),
+                          )),
 
                       const SizedBox(height: 20),
 
@@ -347,7 +359,14 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
                                 Icons.local_gas_station_rounded,
                                 const Color(0xFFF97316));
                           }
-                          return _buildFuelSummary(logs.first, logs);
+                          return FuelSummaryCard(
+                            last: logs.first,
+                            all: logs,
+                            onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => LogsScreen(car: _car))),
+                          );
                         },
                       ),
 
@@ -359,353 +378,6 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════
-  //  HEADER
-  // ══════════════════════════════════════
-  Widget _buildHeader(int healthScore, int overdueCount, int dueSoonCount,
-      int okCount, int total) {
-    final healthColor = healthScore >= 80
-        ? Colors.green
-        : healthScore >= 50
-            ? Colors.orange
-            : Colors.red;
-
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-        ),
-      ),
-      child: Stack(
-        children: [
-          // دوائر زخرفية
-          Positioned(
-            top: -30,
-            right: -30,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF38BDF8).withAlpha(15),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 20,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF38BDF8).withAlpha(10),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 56, 20, 18),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Health score دائري
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 90,
-                        height: 90,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            SizedBox(
-                              width: 90,
-                              height: 90,
-                              child: CircularProgressIndicator(
-                                value: healthScore / 100,
-                                strokeWidth: 7,
-                                backgroundColor: Colors.white.withAlpha(20),
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(healthColor),
-                                strokeCap: StrokeCap.round,
-                              ),
-                            ),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$healthScore',
-                                  style: GoogleFonts.cairo(
-                                    color: healthColor,
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text('%',
-                                    style: GoogleFonts.cairo(
-                                        color: Colors.white54, fontSize: 11)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text('حالة السيارة',
-                          style: GoogleFonts.cairo(
-                              color: Colors.white54, fontSize: 11)),
-                      const SizedBox(height: 4),
-                      if (total > 0)
-                        Row(
-                          children: [
-                            if (overdueCount > 0)
-                              _miniChip('$overdueCount', Colors.red),
-                            if (dueSoonCount > 0) ...[
-                              if (overdueCount > 0) const SizedBox(width: 4),
-                              _miniChip('$dueSoonCount', Colors.orange),
-                            ],
-                            if (okCount > 0) ...[
-                              if (overdueCount > 0 || dueSoonCount > 0)
-                                const SizedBox(width: 4),
-                              _miniChip('$okCount', Colors.green),
-                            ],
-                          ],
-                        ),
-                    ],
-                  ),
-                  // معلومات السيارة
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${_cap(_car.make)} ${_cap(_car.model)}',
-                        style: GoogleFonts.cairo(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        '${_car.year} • ${_car.licensePlate}',
-                        style: GoogleFonts.cairo(
-                            color: const Color(0xFF38BDF8), fontSize: 13),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: Colors.white.withAlpha(25), width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${_car.currentOdometer.toStringAsFixed(0)} كم',
-                              style: GoogleFonts.cairo(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(Icons.speed_rounded,
-                                color: Color(0xFF38BDF8), size: 16),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _miniChip(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withAlpha(64),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(128)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 4),
-          Text(label,
-              style: GoogleFonts.cairo(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  // ══════════════════════════════════════
-  //  PART CARD
-  // ══════════════════════════════════════
-  Widget _buildPartCard(CarPartModel part) {
-    final status = part.status(_car.currentOdometer);
-    final Color statusColor;
-    final IconData statusIcon;
-    final String statusText;
-
-    switch (status) {
-      case PartStatus.overdue:
-        statusColor = Colors.red;
-        statusIcon = Icons.warning_rounded;
-        statusText = 'متأخر!';
-        break;
-      case PartStatus.dueSoon:
-        statusColor = Colors.orange;
-        statusIcon = Icons.access_time_rounded;
-        statusText = 'قريب';
-        break;
-      case PartStatus.ok:
-        statusColor = Colors.green;
-        statusIcon = Icons.check_circle_rounded;
-        statusText = 'تمام';
-        break;
-    }
-
-    final km = part.kmRemaining(_car.currentOdometer);
-    final days = part.daysRemaining();
-    String remainingText = '';
-    if (km != null) {
-      remainingText = km <= 0
-          ? 'تجاوز ${(-km).toStringAsFixed(0)} كم'
-          : 'باقي ${km.toStringAsFixed(0)} كم';
-    } else if (days != null) {
-      remainingText = days < 0
-          ? 'تجاوز ${(-days)} يوم'
-          : days == 0
-              ? 'ينتهي اليوم!'
-              : 'باقي $days يوم';
-    }
-
-    final prog = part.progress(_car.currentOdometer);
-
-    return GestureDetector(
-      onLongPress: () => _confirmDeletePart(part),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: status != PartStatus.ok
-                ? statusColor.withAlpha(76)
-                : Colors.grey.withAlpha(26),
-            width: status != PartStatus.ok ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(10),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Badge الحالة
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withAlpha(26),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, color: statusColor, size: 12),
-                      const SizedBox(width: 4),
-                      Text(statusText,
-                          style: GoogleFonts.cairo(
-                            color: statusColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          )),
-                    ],
-                  ),
-                ),
-                // اسم القطعة
-                Text(
-                  part.name,
-                  style: GoogleFonts.cairo(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: status == PartStatus.overdue
-                        ? Colors.red
-                        : Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // شريط التقدم
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: prog,
-                backgroundColor: Colors.grey.withAlpha(38),
-                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-                minHeight: 7,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  remainingText,
-                  style: GoogleFonts.cairo(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (part.nextDueOdometer != null)
-                  Text(
-                    'عند ${part.nextDueOdometer!.toStringAsFixed(0)} كم',
-                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
-                  )
-                else if (part.nextDueDate != null)
-                  Text(
-                    DateFormat('dd/MM/yyyy').format(part.nextDueDate!),
-                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11),
-                  ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -768,90 +440,6 @@ class _CarDashboardScreenState extends State<CarDashboardScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  // ══════════════════════════════════════
-  //  FUEL SUMMARY
-  // ══════════════════════════════════════
-  Widget _buildFuelSummary(FuelLogModel last, List<FuelLogModel> all) {
-    // حساب متوسط الاستهلاك من آخر 5 سجلات
-    double? avgEff;
-    final withEff =
-        all.where((l) => l.calculatedEfficiency != null).take(5).toList();
-    if (withEff.isNotEmpty) {
-      avgEff =
-          withEff.map((l) => l.calculatedEfficiency!).reduce((a, b) => a + b) /
-              withEff.length;
-    }
-
-    return GestureDetector(
-      onTap: () => Navigator.push(
-          context, MaterialPageRoute(builder: (_) => LogsScreen(car: _car))),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(15),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.arrow_forward_ios,
-                        size: 14, color: Colors.grey),
-                    Text('كل السجلات',
-                        style: GoogleFonts.cairo(
-                            color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-                Text(
-                  DateFormat('dd/MM/yyyy').format(last.date),
-                  style: GoogleFonts.cairo(color: Colors.grey, fontSize: 12),
-                ),
-              ],
-            ),
-            const Divider(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _fuelStat('${last.totalCost.toStringAsFixed(0)} ج.م', 'التكلفة',
-                    Icons.attach_money, Colors.red),
-                _fuelStat('${last.fuelAmount} لتر', 'الكمية',
-                    Icons.local_gas_station, const Color(0xFFFB8C00)),
-                _fuelStat('${last.odometer.toStringAsFixed(0)} كم', 'العداد',
-                    Icons.speed, Colors.blue),
-                if (avgEff != null)
-                  _fuelStat('${avgEff.toStringAsFixed(1)}', 'ل/100كم',
-                      Icons.show_chart, Colors.green),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _fuelStat(String val, String label, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 4),
-        Text(val,
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.bold, fontSize: 13, color: color)),
-        Text(label, style: GoogleFonts.cairo(color: Colors.grey, fontSize: 11)),
-      ],
     );
   }
 
