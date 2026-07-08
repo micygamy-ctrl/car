@@ -7,20 +7,7 @@ import '../services/car_service.dart';
 import '../models/maintenance_log_model.dart';
 import '../models/car_model.dart';
 import '../services/car_part_service.dart';
-
-class _MaintenanceTemplate {
-  final String title;
-  final IconData icon;
-  final int intervalKm;
-  final int intervalDays;
-
-  const _MaintenanceTemplate({
-    required this.title,
-    required this.icon,
-    required this.intervalKm,
-    required this.intervalDays,
-  });
-}
+import '../data/service_templates.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final CarModel car;
@@ -58,136 +45,10 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   bool _isLoading = false;
   bool _updateCarOdometer = true;
   bool _addReminder = true;
-  _MaintenanceTemplate? _selectedTemplate;
-
-  final List<_MaintenanceTemplate> _maintenanceTemplates = const [
-    _MaintenanceTemplate(
-      title: 'تغيير فلتر الزيت',
-      icon: Icons.filter_alt,
-      intervalKm: 5000,
-      intervalDays: 180,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير زيت الموتور',
-      icon: Icons.oil_barrel,
-      intervalKm: 5000,
-      intervalDays: 180,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير فلتر الهواء',
-      icon: Icons.air,
-      intervalKm: 10000,
-      intervalDays: 365,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير فلتر التكييف',
-      icon: Icons.ac_unit,
-      intervalKm: 10000,
-      intervalDays: 365,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير بوجيهات',
-      icon: Icons.bolt,
-      intervalKm: 30000,
-      intervalDays: 730,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير تيل الفرامل',
-      icon: Icons.car_repair,
-      intervalKm: 20000,
-      intervalDays: 730,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير زيت الفتيس',
-      icon: Icons.settings,
-      intervalKm: 60000,
-      intervalDays: 1095,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير سائل التبريد',
-      icon: Icons.water_drop,
-      intervalKm: 40000,
-      intervalDays: 730,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير البطارية',
-      icon: Icons.battery_charging_full,
-      intervalKm: 0,
-      intervalDays: 730,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير/ الإطارات',
-      icon: Icons.album,
-      intervalKm: 50000,
-      intervalDays: 1460,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير زيت الباور',
-      icon: Icons.settings,
-      intervalKm: 60000,
-      intervalDays: 1095,
-    ),
-    _MaintenanceTemplate(
-      title: 'تغيير فلتر الوقود',
-      icon: Icons.settings,
-      intervalKm: 60000,
-      intervalDays: 1095,
-    ),
-  ];
-
-  final List<Map<String, dynamic>> _categories = [
-    {
-      'value': 'maintenance',
-      'label': 'صيانة',
-      'icon': Icons.build,
-      'color': const Color(0xFF43A047),
-    },
-    {
-      'value': 'insurance',
-      'label': 'تأمين',
-      'icon': Icons.shield,
-      'color': const Color(0xFF1E88E5),
-    },
-    {
-      'value': 'license',
-      'label': 'رخصة',
-      'icon': Icons.credit_card,
-      'color': const Color(0xFF8E24AA),
-    },
-    {
-      'value': 'violation',
-      'label': 'مخالفة',
-      'icon': Icons.warning,
-      'color': const Color(0xFFE53935),
-    },
-    {
-      'value': 'wash',
-      'label': 'غسيل',
-      'icon': Icons.local_car_wash,
-      'color': const Color(0xFF00ACC1),
-    },
-    {
-      'value': 'inspection',
-      'label': 'فحص',
-      'icon': Icons.fact_check,
-      'color': const Color(0xFFFB8C00),
-    },
-    {
-      'value': 'emergency',
-      'label': 'طوارئ',
-      'icon': Icons.emergency,
-      'color': const Color(0xFFD81B60),
-    },
-    {
-      'value': 'other',
-      'label': 'أخرى',
-      'icon': Icons.more_horiz,
-      'color': const Color(0xFF757575),
-    },
-  ];
+  MaintenanceTemplate? _selectedTemplate;
 
   Map<String, dynamic> get _currentCategory =>
-      _categories.firstWhere((c) => c['value'] == _selectedCategory);
+      serviceCategories.firstWhere((c) => c['value'] == _selectedCategory);
 
   @override
   void dispose() {
@@ -236,7 +97,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     }
   }
 
-  void _selectMaintenanceTemplate(_MaintenanceTemplate template) {
+  void _selectMaintenanceTemplate(MaintenanceTemplate template) {
     final currentOdometer = double.tryParse(_odometerController.text.trim()) ??
         widget.car.currentOdometer;
 
@@ -495,7 +356,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
                             childAspectRatio: 0.85,
-                            children: _categories.map((cat) {
+                            children: serviceCategories.map((cat) {
                               final isSelected =
                                   _selectedCategory == cat['value'];
                               final color = cat['color'] as Color;
@@ -809,7 +670,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       color: color,
       children: [
         GridView.builder(
-          itemCount: _maintenanceTemplates.length,
+          itemCount: maintenanceTemplates.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -819,7 +680,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
             childAspectRatio: 2.45,
           ),
           itemBuilder: (context, index) {
-            final template = _maintenanceTemplates[index];
+            final template = maintenanceTemplates[index];
             final selected = _selectedTemplate?.title == template.title;
             return InkWell(
               onTap: () => _selectMaintenanceTemplate(template),
