@@ -2,109 +2,141 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
+
+    // ───────────────────────────────────────────────
+    // Helper Functions
+    // ───────────────────────────────────────────────
+
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function carPath(carId) {
-      return /databases/$(database)/documents/cars/$(carId);
-    }
-
-    function invitePath(code) {
-      return /databases/$(database)/documents/inviteCodes/$(code);
-    }
-
+    // هل المستخدم الحالي هو مالك السيارة (admin)؟
     function isCarOwner(carId) {
-      return signedIn()
-        && exists(carPath(carId))
-        && get(carPath(carId)).data.ownerId == request.auth.uid;
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/cars/$(carId)) &&
+        get(/databases/$(database)/documents/cars/$(carId)).data.ownerId == request.auth.uid;
     }
 
+    // هل المستخدم الحالي سواق مسجل على السيارة؟
     function isCarMember(carId) {
-      return signedIn()
-        && exists(/databases/$(database)/documents/carMembers/$(carId + '_' + request.auth.uid));
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/carMembers/$(carId + '_' + request.auth.uid));
     }
 
-    function canAccessCar(carId) {
+    // وصول كامل (قراءة/تعديل بيانات السيارة) لو مالك أو سواق
+    function hasCarAccess(carId) {
       return isCarOwner(carId) || isCarMember(carId);
     }
 
+    // ───────────────────────────────────────────────
+    // users/{userId} — إعدادات المستخدم الشخصية
+    // ───────────────────────────────────────────────
     match /users/{userId} {
-      allow read, create, update: if signedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ───────────────────────────────────────────────
+    // cars/{carId} — بيانات السيارة
+    // ───────────────────────────────────────────────
+    match /cars/{carId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid || hasCarAccess(carId)
+      );
+
+      // الإنشاء: لازم ownerId يكون نفس المستخدم الحالي
+      allow create: if isSignedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+
+      // التعديل: المالك أو السواقين (محتاجين يحدّثوا العداد بعد الرحلات)
+      // ملحوظة: لو حابب تمنع السواقين من تعديل بيانات تانية غير العداد
+      // (الموديل، رقم اللوحة، ...) ده محتاج Cloud Function لاحقًا.
+      allow update: if hasCarAccess(carId);
+
+      // الحذف: المالك فقط
+      allow delete: if isCarOwner(carId);
+    }
+
+    // ───────────────────────────────────────────────
+    // carMembers/{carId_userId} — ربط السواقين بالسيارات
+    // ───────────────────────────────────────────────
+    match /carMembers/{memberId} {
+      // القراءة: السواق نفسه يقدر يقرا سجله (أو يتأكد إنه غير موجود)،
+      // والمالك يقدر يقرا كل السواقين
+      allow read: if isSignedIn() &&
+        (resource == null ||
+         resource.data.userId == request.auth.uid ||
+         isCarOwner(resource.data.carId));
+
+      // الإنشاء: لما سواق يعمل join بكود، بينشئ سجل بـ userId بتاعه فقط
+      allow create: if isSignedIn() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // التعديل: غير مسموح (لا تغيير دور أحد لاحقًا من الكلاينت)
+      allow update: if false;
+
+      // الحذف: المالك فقط (إزالة سواق)
+      allow delete: if isCarOwner(resource.data.carId);
+    }
+
+    // ───────────────────────────────────────────────
+    // inviteCodes/{code} — أكواد دعوة السواقين
+    // ───────────────────────────────────────────────
+    match /inviteCodes/{code} {
+      // القراءة: أي مستخدم مسجل (محتاج يقرا الكود عشان ينضم)
+      allow read: if isSignedIn();
+
+      // الإنشاء: فقط من ينشئ الكود يكون هو createdBy
+      allow create: if isSignedIn() &&
+        request.resource.data.createdBy == request.auth.uid;
+
+      // التعديل: السماح بتعليم الكود كمستخدم (isUsed) فقط
+      allow update: if isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['isUsed', 'usedBy']);
+
       allow delete: if false;
     }
 
-    match /cars/{carId} {
-      allow read: if canAccessCar(carId);
-      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isCarOwner(carId);
-    }
-
-    match /carMembers/{memberId} {
-      allow read: if canAccessCar(resource.data.carId);
-
-      allow create: if signedIn()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.role == 'driver'
-        && memberId == request.resource.data.carId + '_' + request.auth.uid
-        && request.resource.data.inviteCode is string
-        && exists(invitePath(request.resource.data.inviteCode))
-        && get(invitePath(request.resource.data.inviteCode)).data.carId == request.resource.data.carId
-        && get(invitePath(request.resource.data.inviteCode)).data.createdBy != request.auth.uid
-        && request.time < get(invitePath(request.resource.data.inviteCode)).data.expiresAt;
-
-      allow update: if false;
-      allow delete: if isCarOwner(resource.data.carId);
-    }
-
-    match /inviteCodes/{code} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.createdBy == request.auth.uid
-        && isCarOwner(request.resource.data.carId);
-      allow update: if signedIn()
-        && resource.data.carId == request.resource.data.carId
-        && resource.data.createdBy == request.resource.data.createdBy
-        && resource.data.expiresAt == request.resource.data.expiresAt
-        && request.time < resource.data.expiresAt;
-      allow delete: if isCarOwner(resource.data.carId);
-    }
-
+    // ───────────────────────────────────────────────
+    // مجموعات بيانات السيارة (مرتبطة بـ carId)
+    // fuelLogs / serviceLogs / carParts / maintenanceItems / trips
+    // ───────────────────────────────────────────────
     match /fuelLogs/{logId} {
-      allow read, delete: if canAccessCar(resource.data.carId);
-      allow create: if canAccessCar(request.resource.data.carId);
-      allow update: if canAccessCar(resource.data.carId)
-        && request.resource.data.carId == resource.data.carId;
+      // resource == null يعني الوثيقة غير موجودة (مفيدة لعمليات upsert
+      // اللي بتعمل .get() قبل ما تقرر تنشئ أو تعدّل)
+      allow read: if resource == null || hasCarAccess(resource.data.carId);
+      allow update, delete: if hasCarAccess(resource.data.carId);
+      allow create: if hasCarAccess(request.resource.data.carId);
     }
 
     match /serviceLogs/{logId} {
-      allow read, delete: if canAccessCar(resource.data.carId);
-      allow create: if canAccessCar(request.resource.data.carId);
-      allow update: if canAccessCar(resource.data.carId)
-        && request.resource.data.carId == resource.data.carId;
-    }
-
-    match /maintenanceItems/{itemId} {
-      allow read, delete: if canAccessCar(resource.data.carId);
-      allow create: if canAccessCar(request.resource.data.carId);
-      allow update: if canAccessCar(resource.data.carId)
-        && request.resource.data.carId == resource.data.carId;
+      allow read: if resource == null || hasCarAccess(resource.data.carId);
+      allow update, delete: if hasCarAccess(resource.data.carId);
+      allow create: if hasCarAccess(request.resource.data.carId);
     }
 
     match /carParts/{partId} {
-      allow read, delete: if canAccessCar(resource.data.carId);
-      allow create: if canAccessCar(request.resource.data.carId);
-      allow update: if canAccessCar(resource.data.carId)
-        && request.resource.data.carId == resource.data.carId;
+      allow read: if resource == null || hasCarAccess(resource.data.carId);
+      allow update, delete: if hasCarAccess(resource.data.carId);
+      allow create: if hasCarAccess(request.resource.data.carId);
+    }
+
+    match /maintenanceItems/{itemId} {
+      allow read: if resource == null || hasCarAccess(resource.data.carId);
+      allow update, delete: if hasCarAccess(resource.data.carId);
+      allow create: if hasCarAccess(request.resource.data.carId);
     }
 
     match /trips/{tripId} {
-      allow read, delete: if canAccessCar(resource.data.carId);
-      allow create: if canAccessCar(request.resource.data.carId);
-      allow update: if canAccessCar(resource.data.carId)
-        && request.resource.data.carId == resource.data.carId;
+      allow read: if resource == null || hasCarAccess(resource.data.carId);
+      allow delete: if hasCarAccess(resource.data.carId);
+      allow create: if hasCarAccess(request.resource.data.carId) &&
+        request.resource.data.driverId == request.auth.uid;
+      allow update: if false; // الرحلات لا تُعدّل بعد الحفظ
     }
 
+    // أي حاجة تانية مرفوضة بشكل افتراضي
     match /{document=**} {
       allow read, write: if false;
     }
