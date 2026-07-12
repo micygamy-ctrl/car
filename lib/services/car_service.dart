@@ -10,8 +10,14 @@ class CarWithRole {
 }
 
 class CarService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Uuid _uuid = const Uuid();
+  final FirebaseFirestore _firestore;
+  final Uuid _uuid;
+
+  /// في الإنتاج: CarService() هتستخدم Firebase الحقيقي زي ما كان بالظبط.
+  /// في الاختبار: CarService(firestore: fakeFirestore).
+  CarService({FirebaseFirestore? firestore, Uuid? uuid})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _uuid = uuid ?? const Uuid();
 
   Future<void> addCar(CarModel car) async {
     try {
@@ -134,4 +140,4 @@ class CarService {
   }
 
   String generateId() => _uuid.v4();
-}
+} 

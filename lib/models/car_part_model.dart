@@ -157,7 +157,7 @@ List<CarPartModel> defaultPartsFor(String carId, double currentOdometer) {
     ('تغيير زيت الفتيس', 'fluids', 60000, 1095),
     ('تغيير سائل التبريد', 'fluids', 40000, 730),
     ('تغيير البطارية', 'electrical', 0, 730),
-    ('تغيير/ الإطارات', 'tires', 50000, 1460),
+    ('تغيير الإطارات', 'tires', 50000, 1460),
     ('تغيير زيت الباور', 'fluids', 60000, 1095),
     ('تغيير فلتر الوقود', 'engine', 60000, 1095),
   ];
@@ -167,7 +167,8 @@ List<CarPartModel> defaultPartsFor(String carId, double currentOdometer) {
     final cat = p.$2;
     final km = p.$3;
     final days = p.$4;
-    final partId = '${carId}_${name.replaceAll(' ', '_')}';
+    final partId =
+    '${carId}_${name.replaceAll(' ', '_').replaceAll(RegExp(r'[^\w\u0600-\u06FF]+'), '')}';
 
     return CarPartModel(
       partId: partId,

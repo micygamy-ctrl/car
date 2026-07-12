@@ -2,7 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/car_part_model.dart';
 
 class CarPartService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  /// في الإنتاج: CarPartService() هتستخدم Firebase الحقيقي زي ما كان بالظبط.
+  /// في الاختبار: CarPartService(firestore: fakeFirestore).
+  CarPartService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const String _collection = 'carParts';
 
