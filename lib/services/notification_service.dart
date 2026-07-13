@@ -1,13 +1,28 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 import '../models/maintenance_log_model.dart';
 import '../models/car_part_model.dart';
 
+typedef SendNotificationFn = Future<void> Function({
+  required int id,
+  required String title,
+  required String body,
+});
+
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
-  NotificationService._internal();
+  NotificationService._internal() : _sendOverride = null;
+
+  /// باب خلفي للاختبارات فقط — بيتجاوز الـ singleton وبيسمح بحقن دالة
+  /// وهمية بدل الاتصال الحقيقي بمكتبة الإشعارات (اللي مش متاحة في بيئة الاختبار).
+  @visibleForTesting
+  NotificationService.forTesting({required SendNotificationFn sendNotification})
+      : _sendOverride = sendNotification;
+
+  final SendNotificationFn? _sendOverride;
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
@@ -30,6 +45,11 @@ class NotificationService {
     required String title,
     required String body,
   }) async {
+   final override = _sendOverride;
+    if (override != null) {
+      return override(id: id, title: title, body: body);
+    }
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'car_maintenance_channel',

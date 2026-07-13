@@ -3,8 +3,12 @@ import 'package:uuid/uuid.dart';
 import '../models/maintenance_log_model.dart';
 
 class MaintenanceService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Uuid _uuid = const Uuid();
+  final FirebaseFirestore _firestore;
+  final Uuid _uuid;
+
+  MaintenanceService({FirebaseFirestore? firestore, Uuid? uuid})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _uuid = uuid ?? const Uuid();
 
   Future<void> addServiceLog(ServiceLogModel log) async {
     try {

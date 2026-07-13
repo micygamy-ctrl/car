@@ -3,8 +3,12 @@ import 'package:uuid/uuid.dart';
 import '../models/fuel_log_model.dart';
 
 class FuelService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Uuid _uuid = const Uuid();
+  final FirebaseFirestore _firestore;
+  final Uuid _uuid;
+
+  FuelService({FirebaseFirestore? firestore, Uuid? uuid})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _uuid = uuid ?? const Uuid();
 
   // إضافة سجل وقود جديد
   Future<void> addFuelLog(FuelLogModel log) async {
