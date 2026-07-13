@@ -5,8 +5,12 @@ import '../models/maintenance_item_model.dart';
 import '../models/maintenance_log_model.dart';
 
 class MaintenanceItemService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Uuid _uuid = const Uuid();
+  final FirebaseFirestore _firestore;
+  final Uuid _uuid;
+
+  MaintenanceItemService({FirebaseFirestore? firestore, Uuid? uuid})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        _uuid = uuid ?? const Uuid();
 
   Stream<List<MaintenanceItemModel>> getCarMaintenanceItems(String carId) {
     return _firestore
